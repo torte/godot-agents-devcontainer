@@ -1,0 +1,57 @@
+{
+  "name": "Claude Code Godot Sandbox",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "args": {
+      "TZ": "${localEnv:TZ:America/Los_Angeles}",
+      "GIT_DELTA_VERSION": "0.18.2",
+      "ZSH_IN_DOCKER_VERSION": "1.2.0"
+    }
+  },
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "eamodio.gitlens",
+        "geequlim.godot-tools"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "bash": {
+            "path": "bash",
+            "icon": "terminal-bash"
+          },
+          "zsh": {
+            "path": "zsh"
+          }
+        }
+      }
+    }
+  },
+  "remoteUser": "node",
+  "mounts": [
+    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=${localEnv:CLAUDE_USER_CONFIG_DIR},target=/home/node/.claude-user-config,type=bind,readonly"
+  ],
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+  },
+  "workspaceMount": "source=${localEnv:GODOT_PROJECT_PATH},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  "postStartCommand": "[ -d /home/node/.claude-user-config/skills ] && ln -sfn /home/node/.claude-user-config/skills /home/node/.claude/skills; [ -f /home/node/.claude-user-config/CLAUDE.md ] && ln -sf /home/node/.claude-user-config/CLAUDE.md /home/node/.claude/CLAUDE.md; [ -f /home/node/.claude-user-config/AGENTS.md ] && ln -sf /home/node/.claude-user-config/AGENTS.md /home/node/.claude/AGENTS.md; claude mcp add godot-mcp -s user -e GODOT_HOST=host.docker.internal -e GODOT_PORT=6550 -- npx -y @satelliteoflove/godot-mcp; claude mcp add minimal-godot-mcp -s user -e GODOT_LSP_PORT=6005 -e GODOT_WORKSPACE_PATH=/workspace -- npx -y @ryanmazzolini/minimal-godot-mcp; nohup socat TCP-LISTEN:6005,fork,reuseaddr TCP:host.docker.internal:6005 >/dev/null 2>&1 &",
+  "waitFor": "postStartCommand"
+}
