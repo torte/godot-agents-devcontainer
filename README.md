@@ -19,8 +19,11 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 ## Prerequisites
 
 - **Docker** (20.10+) installed and running
+  - **macOS / Windows**: [Docker Desktop](https://www.docker.com/products/docker-desktop/) (recommended)
+  - **Windows (WSL2)**: Docker Desktop with WSL2 backend, or Docker Engine inside WSL2
+  - **Linux**: Docker Engine or Docker Desktop
 - **Node.js** (18+) on the host (for npm scripts and devcontainer CLI)
-- **socat** on the host (`sudo apt-get install socat`) — bridges Godot's localhost ports to the Docker network (Linux only)
+- **socat** (Linux only) — bridges Godot's localhost ports to the Docker network. Not needed on macOS or Windows where Docker Desktop handles this natively. Install with `sudo apt-get install socat`
 - **Godot 4.5+** editor installed on the host
 
 ## Setup
@@ -105,7 +108,7 @@ npm run devcontainer:up
 npm run claude
 ```
 
-The port bridge (Linux only) starts automatically with the container, relaying Godot's localhost-bound ports to the Docker network. Claude Code will have access to all MCP tools. You can verify with the `/mcp` command inside Claude Code.
+On Linux, a port bridge starts automatically with the container, relaying Godot's localhost-bound ports to the Docker network. On macOS and Windows, Docker Desktop handles this natively — no bridge needed. Claude Code will have access to all MCP tools on all platforms. You can verify with the `/mcp` command inside Claude Code.
 
 When done:
 
@@ -118,17 +121,40 @@ npm run devcontainer:down
 | Command                             | Description                                                              |
 | ----------------------------------- | ------------------------------------------------------------------------ |
 | `npm run devcontainer:build`        | Build the container image                                                |
-| `npm run devcontainer:up`           | Start the container (auto-starts port bridge on Linux)                   |
-| `npm run devcontainer:down`         | Stop and remove the container (auto-stops port bridge)                   |
+| `npm run devcontainer:up`           | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
+| `npm run devcontainer:down`         | Stop and remove the container (auto-stops port bridge on Linux)          |
 | `npm run devcontainer:shell`        | Open a shell inside the container                                        |
-| `npm run bridge:start`              | Manually start host-side port bridge (auto-started by `devcontainer:up`) |
-| `npm run bridge:stop`               | Manually stop the port bridge (auto-stopped by `devcontainer:down`)      |
+| `npm run bridge:start`              | Manually start host-side port bridge (Linux only; no-op on macOS/Windows) |
+| `npm run bridge:stop`               | Manually stop the port bridge (Linux only)                               |
 | `npm run claude`                    | Launch Claude Code with `--dangerously-skip-permissions`                 |
 | `npm run claude:resume`             | Resume a previous Claude Code session                                    |
 | `npm run claude:prompt -- "prompt"` | Run a one-shot prompt                                                    |
 | `npm run install-godot-addon`       | Install godot-mcp addon into the Godot project                           |
 
 ## How It Works
+
+### macOS / Windows (Docker Desktop)
+
+```
+Host Machine                          Container
++------------------+                  +--------------------+
+| Godot 4.5+       |  host.docker.    | Claude Code CLI    |
+|  127.0.0.1:6550  |  internal        |   godot-mcp        |
+|  127.0.0.1:6005  | <--------------> |   minimal-godot-   |
+|                  |  (native)        |     mcp            |
++------------------+                  +--------------------+
+                                      | /workspace (bind)  |
+                                      |   = Godot project  |
+                                      +--------------------+
+                                      | ~/.claude (volume)  |
+                                      |   + skills/ (link)  |
+                                      |   + CLAUDE.md (link) |
+                                      +--------------------+
+```
+
+Docker Desktop resolves `host.docker.internal` to the host and can reach localhost-bound ports natively. No bridge needed.
+
+### Linux (Docker Engine)
 
 ```
 Host Machine                          Container
@@ -147,8 +173,11 @@ Host Machine                          Container
                                        +--------------------+
 ```
 
+Godot binds to `127.0.0.1`, but the container reaches the host via the Docker bridge gateway (`172.17.0.1`). The host-side bridge (`bridge.sh` / socat) relays between these interfaces. Container-side socat forwards `localhost` to `host.docker.internal`.
+
+### Common to all platforms
+
 - Your Godot project is bind-mounted into the container at `/workspace`
-- **Port bridging** (Linux only): Godot binds to `127.0.0.1`, but the container reaches the host via the Docker bridge (`172.17.0.1`). The host-side bridge (`npm run bridge:start`) relays between these interfaces. Container-side socat then forwards `localhost` to `host.docker.internal`.
 - Your Claude user config (`CLAUDE_USER_CONFIG_DIR`) is mounted read-only; skills and CLAUDE.md are symlinked into the persisted `~/.claude` volume on startup
 - The container has unrestricted network access (Docker provides filesystem and process isolation)
 
@@ -172,13 +201,15 @@ The container includes tools that Claude Code can use to generate and manipulate
 ### MCP servers can't connect to Godot
 
 - Ensure Godot is running on the host **before** launching Claude Code
-- Verify the port bridge is running (`npm run bridge:start`) — this starts automatically with `devcontainer:up` but may need restarting if Godot was restarted
+- **Linux**: Verify the port bridge is running (`npm run bridge:start`) — this starts automatically with `devcontainer:up` but may need restarting if Godot was restarted
+- **macOS / Windows**: No bridge needed, but ensure Docker Desktop is running
 - Verify the godot-mcp addon is enabled in Project Settings > Plugins
 - Check that the LSP server is enabled in Editor Settings > Network > Language Server
 
 ### Container can't resolve `host.docker.internal`
 
-This requires Docker 20.10+ on Linux. The `--add-host=host.docker.internal:host-gateway` flag is set in `devcontainer.json`. Verify with:
+- **macOS / Windows**: Docker Desktop provides this automatically. Ensure Docker Desktop is up to date.
+- **Linux (Docker Engine)**: Requires Docker 20.10+. The `--add-host=host.docker.internal:host-gateway` flag is set in `devcontainer.json`. Verify with:
 
 ```bash
 devcontainer exec --workspace-folder . ping -c 1 host.docker.internal
@@ -190,7 +221,13 @@ Credentials are stored in the Docker volume `claude-code-config-<id>`. If you de
 
 ### Godot LSP connection refused
 
-Godot binds to `127.0.0.1` only. The host-side bridge handles this by relaying from the Docker bridge IP to localhost. The bridge starts automatically with `devcontainer:up`. If it still fails:
+Godot binds to `127.0.0.1` only.
 
-- Verify socat is installed on the host (`sudo apt-get install socat`)
-- Manually restart the bridge: `npm run bridge:stop && npm run bridge:start`
+- **macOS / Windows**: Docker Desktop can reach host localhost ports natively. Ensure Docker Desktop is running and up to date.
+- **Linux**: The host-side bridge relays from the Docker bridge IP to localhost. The bridge starts automatically with `devcontainer:up`. If it still fails:
+  - Verify socat is installed (`sudo apt-get install socat`)
+  - Manually restart the bridge: `npm run bridge:stop && npm run bridge:start`
+
+### Windows / WSL2 notes
+
+If running Godot natively on Windows with Docker Desktop using the WSL2 backend, `host.docker.internal` resolves to the Windows host. This should work without additional configuration, but networking through the WSL2 VM can occasionally cause connectivity issues. If MCP tools fail to connect, verify that Godot's ports (6550, 6005) are not blocked by the Windows firewall.
