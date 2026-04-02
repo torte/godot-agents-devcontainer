@@ -71,8 +71,8 @@ start_bridge() {
 
   echo "Starting bridge on ${gateway} (ports ${GODOT_WS_PORT}, ${GODOT_LSP_PORT})..."
 
-  socat "TCP-LISTEN:${GODOT_WS_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_WS_PORT}" &
-  socat "TCP-LISTEN:${GODOT_LSP_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_LSP_PORT}" &
+  socat "TCP-LISTEN:${GODOT_WS_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_WS_PORT}" 2>/dev/null &
+  socat "TCP-LISTEN:${GODOT_LSP_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_LSP_PORT}" 2>/dev/null &
 
   sleep 0.5
 
