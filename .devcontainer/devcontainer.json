@@ -5,6 +5,7 @@
     "args": {
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
       "GIT_DELTA_VERSION": "0.18.2",
+      "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.6.1}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
@@ -43,7 +44,8 @@
   "mounts": [
     "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
     "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
-    "source=${localEnv:CLAUDE_USER_CONFIG_DIR},target=/home/node/.claude-user-config,type=bind,readonly"
+    "source=${localEnv:CLAUDE_USER_CONFIG_DIR},target=/home/node/.claude-user-config,type=bind,readonly",
+    "source=opencode-config-${devcontainerId},target=/home/node/.config/opencode,type=volume"
   ],
   "containerEnv": {
     "NODE_OPTIONS": "--max-old-space-size=4096",
@@ -52,6 +54,6 @@
   },
   "workspaceMount": "source=${localEnv:GODOT_PROJECT_PATH},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
-  "postStartCommand": "[ -d /home/node/.claude-user-config/skills ] && ln -sfn /home/node/.claude-user-config/skills /home/node/.claude/skills; [ -f /home/node/.claude-user-config/CLAUDE.md ] && ln -sf /home/node/.claude-user-config/CLAUDE.md /home/node/.claude/CLAUDE.md; [ -f /home/node/.claude-user-config/AGENTS.md ] && ln -sf /home/node/.claude-user-config/AGENTS.md /home/node/.claude/AGENTS.md; claude mcp add godot-mcp -s user -e GODOT_HOST=host.docker.internal -e GODOT_PORT=6550 -- npx -y @satelliteoflove/godot-mcp; claude mcp add minimal-godot-mcp -s user -e GODOT_LSP_PORT=6005 -e GODOT_WORKSPACE_PATH=/workspace -- npx -y @ryanmazzolini/minimal-godot-mcp; nohup socat TCP-LISTEN:6005,fork,reuseaddr TCP:host.docker.internal:6005 >/dev/null 2>&1 &",
+  "postStartCommand": "bash /home/node/.devcontainer/poststart.sh",
   "waitFor": "postStartCommand"
 }

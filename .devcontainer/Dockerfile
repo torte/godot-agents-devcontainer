@@ -45,8 +45,8 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 ENV DEVCONTAINER=true
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude && \
-  chown -R node:node /workspace /home/node/.claude
+RUN mkdir -p /workspace /home/node/.claude /home/node/.config/opencode && \
+  chown -R node:node /workspace /home/node/.claude /home/node/.config/opencode
 
 WORKDIR /workspace
 
@@ -56,9 +56,21 @@ RUN ARCH=$(dpkg --print-architecture) && \
   sudo dpkg -i "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb" && \
   rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
 
+# Install Godot headless CLI
+ARG GODOT_VERSION=4.6.1
+RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -O /tmp/godot.zip && \
+  unzip -q /tmp/godot.zip -d /tmp/godot && \
+  mv /tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot && \
+  chmod +x /usr/local/bin/godot && \
+  rm -rf /tmp/godot.zip /tmp/godot
+
 # Install Claude Code via native installer and make available system-wide
 RUN curl -fsSL https://claude.ai/install.sh | bash \
   && cp /root/.local/bin/claude /usr/local/bin/claude
+
+# Copy startup script
+COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
+RUN chmod +x /home/node/.devcontainer/poststart.sh
 
 # Set up non-root user
 USER node
@@ -84,8 +96,9 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -x
 
-# Install Godot MCP servers and 3D asset tools
+# Install AI coding agents, Godot MCP servers, and 3D asset tools
 RUN npm install -g \
+  opencode-ai \
   @satelliteoflove/godot-mcp \
   @ryanmazzolini/minimal-godot-mcp \
   @gltf-transform/cli \

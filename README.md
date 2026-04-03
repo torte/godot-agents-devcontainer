@@ -7,8 +7,10 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 ## What's Included
 
 - **Claude Code CLI** running with `--dangerously-skip-permissions` inside a sandboxed container
+- **[OpenCode](https://opencode.ai)** — Alternative AI coding agent with multi-provider support (OpenAI, Anthropic, Google, local models, etc.)
 - **[godot-mcp](https://github.com/satelliteoflove/godot-mcp)** — Full Godot editor integration (11 tools): scene manipulation, node management, script editing, documentation lookup, game testing
 - **[minimal-godot-mcp](https://github.com/ryanmazzolini/minimal-godot-mcp)** — LSP-based diagnostics (4 tools): GDScript error checking, workspace scanning, console output
+- **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
 
 ## What's NOT included
@@ -51,12 +53,16 @@ GODOT_PROJECT_PATH=/home/you/projects/my-godot-game
 # Your Claude Code user config directory (skills, CLAUDE.md, etc.)
 # Default: $HOME/.claude (standard Claude Code setup)
 CLAUDE_USER_CONFIG_DIR=$HOME/.claude
+
+# Optional: Godot headless CLI version (default: 4.6.1)
+# GODOT_VERSION=4.6.1
 ```
 
 `CLAUDE_USER_CONFIG_DIR` should point to a directory containing any of:
 
-- `skills/` — custom Claude Code skills
-- `CLAUDE.md` — global instructions for Claude Code
+- `skills/` — custom skills (shared by Claude Code and OpenCode)
+- `CLAUDE.md` — global instructions for Claude Code (also read by OpenCode as fallback)
+- `AGENTS.md` — global instructions for OpenCode (takes precedence over CLAUDE.md)
 
 If you manage your Claude config in a separate repo (e.g., with `CLAUDE.md` as a symlink to another file), point this to that directory. Symlinks within the directory resolve correctly inside the container.
 
@@ -101,14 +107,14 @@ This copies the godot-mcp addon into your Godot project's `addons/` directory.
 
 ### 6. Start developing
 
-With Godot running on the host, start the container and launch Claude Code:
+With Godot running on the host, start the container and launch your preferred AI coding agent:
 
 ```bash
 npm run devcontainer:up
-npm run claude
+npm run claude    # or: npm run opencode
 ```
 
-On Linux, a port bridge starts automatically with the container, relaying Godot's localhost-bound ports to the Docker network. On macOS and Windows, Docker Desktop handles this natively — no bridge needed. Claude Code will have access to all MCP tools on all platforms. You can verify with the `/mcp` command inside Claude Code.
+On Linux, a port bridge starts automatically with the container, relaying Godot's localhost-bound ports to the Docker network. On macOS and Windows, Docker Desktop handles this natively — no bridge needed. Both Claude Code and OpenCode have access to all MCP tools on all platforms. You can verify with the `/mcp` command inside Claude Code.
 
 When done:
 
@@ -129,6 +135,8 @@ npm run devcontainer:down
 | `npm run claude`                    | Launch Claude Code with `--dangerously-skip-permissions`                 |
 | `npm run claude:resume`             | Resume a previous Claude Code session                                    |
 | `npm run claude:prompt -- "prompt"` | Run a one-shot prompt                                                    |
+| `npm run opencode`                  | Launch OpenCode TUI                                                      |
+| `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                    |
 | `npm run install-godot-addon`       | Install godot-mcp addon into the Godot project                           |
 
 ## How It Works
@@ -195,6 +203,55 @@ The container includes tools that Claude Code can use to generate and manipulate
 | **gltf-transform**   | 3D    | Optimize, compress (Draco/meshopt), merge, convert glTF files                                    |
 | **obj2gltf**         | 3D    | Convert OBJ models to glTF                                                                       |
 | **fbx2gltf**         | 3D    | Convert FBX models to glTF (Node.js API, use via `node -e "require('fbx2gltf')(input, output)"`) |
+
+## Godot Headless CLI
+
+The container includes the Godot engine binary (v4.6.1 by default), usable via `godot --headless` for:
+
+- **Running scenes**: `godot --headless --path /workspace -s res://script.gd`
+- **Automated testing**: Run test frameworks like GUT or GdUnit4 from the command line
+- **Exporting projects**: `godot --headless --path /workspace --export-release "Linux" build/game`
+- **Project validation**: `godot --headless --path /workspace --check-only`
+
+The version can be changed by setting `GODOT_VERSION` in your `.env` file before building the container.
+
+> **Note**: There is no display server in the container — always use `--headless`. The Godot editor runs on your host machine.
+
+## Using OpenCode
+
+[OpenCode](https://opencode.ai) is included as an alternative AI coding agent with support for 75+ model providers (OpenAI, Anthropic, Google, local models via Ollama, and more).
+
+### Quick start
+
+```bash
+npm run opencode
+```
+
+On first launch, use the `/connect` command inside OpenCode to add your API credentials (e.g., OpenAI, Anthropic). Credentials are stored in a persisted volume.
+
+### MCP and skills compatibility
+
+Both Claude Code and OpenCode share the same Godot MCP servers — the container startup script configures them for both tools automatically. Your skills and instructions (`CLAUDE.md`, `AGENTS.md`, `skills/`) are also shared:
+
+| Feature | Claude Code | OpenCode |
+| --- | --- | --- |
+| MCP servers | Configured via `claude mcp add` | Configured via `opencode.json` |
+| Global rules | `CLAUDE.md` | `AGENTS.md` (falls back to `CLAUDE.md`) |
+| Skills | `~/.claude/skills/` | Reads from `~/.claude/skills/` |
+| Permissions | `--dangerously-skip-permissions` | `"permission": { "*": "allow" }` in config |
+
+### Model configuration
+
+To change the default model, create or edit `opencode.json` in your Godot project root:
+
+```json
+{
+  "model": "openai/gpt-4o",
+  "small_model": "openai/gpt-4o-mini"
+}
+```
+
+See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the full list of supported providers and models.
 
 ## Troubleshooting
 

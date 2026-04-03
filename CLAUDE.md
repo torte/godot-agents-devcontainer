@@ -48,6 +48,13 @@ The container includes tools for programmatic asset creation:
 - **3D**: `python3` with trimesh for procedural mesh generation (export to glTF/OBJ/STL); `gltf-transform` for optimizing/compressing glTF; `obj2gltf` and `fbx2gltf` for format conversion
 - **Audio**: `ffmpeg` for format conversion and simple sound effect generation (sine waves, noise, filters)
 
+## Godot Headless CLI
+
+`godot` is available system-wide. Always use `--headless` (no display server in container).
+- Run GDScript: `godot --headless --path /workspace -s res://script.gd`
+- Export project: `godot --headless --path /workspace --export-release "preset" output_path`
+- Validate project: `godot --headless --path /workspace --check-only`
+
 ## File Editing Guidelines
 
 - **Direct editing**: GDScript (.gd), shaders (.gdshader), project.godot — plain text, safe to edit
