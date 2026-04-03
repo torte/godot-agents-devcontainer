@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-godot-setup",
+  "name": "godot-agents-devcontainer",
   "version": "1.0.0",
-  "description": "Devcontainer setup for Claude Code with Godot MCP servers",
+  "description": "Devcontainer setup for AI coding agents (Claude Code, OpenCode) with Godot MCP servers",
   "scripts": {
     "devcontainer:build": "set -a && . ./.env 2>/dev/null; set +a; devcontainer build --workspace-folder .",
     "devcontainer:up": "set -a && . ./.env 2>/dev/null; set +a; CID=$(docker ps -aq -f label=devcontainer.local_folder=$(pwd)); [ -n \"$CID\" ] && docker rm -f $CID; devcontainer up --workspace-folder . && ./scripts/bridge.sh start",

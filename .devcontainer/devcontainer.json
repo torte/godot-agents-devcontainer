@@ -1,5 +1,5 @@
 {
-  "name": "Claude Code Godot Sandbox",
+  "name": "Godot Agents Devcontainer",
   "build": {
     "dockerfile": "Dockerfile",
     "args": {
@@ -42,8 +42,8 @@
   },
   "remoteUser": "node",
   "mounts": [
-    "source=claude-code-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
-    "source=claude-code-config-${devcontainerId},target=/home/node/.claude,type=volume",
+    "source=godot-agents-bashhistory-${devcontainerId},target=/commandhistory,type=volume",
+    "source=godot-agents-config-${devcontainerId},target=/home/node/.claude,type=volume",
     "source=${localEnv:CLAUDE_USER_CONFIG_DIR},target=/home/node/.claude-user-config,type=bind,readonly",
     "source=opencode-config-${devcontainerId},target=/home/node/.config/opencode,type=volume"
   ],

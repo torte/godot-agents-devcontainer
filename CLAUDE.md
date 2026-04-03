@@ -1,4 +1,4 @@
-# Claude Code Godot Development Environment
+# Godot Agents Development Environment
 
 ## Environment
 

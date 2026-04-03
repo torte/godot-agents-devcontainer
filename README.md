@@ -1,6 +1,6 @@
-# Claude Code Godot Devcontainer for Indie Developers
+# Godot Agents Devcontainer for Indie Developers
 
-A devcontainer setup that runs [Claude Code](https://claude.ai/claude-code) with two Godot MCP servers for AI-assisted Godot game development.
+A devcontainer setup that runs [Claude Code](https://claude.ai/claude-code) and [OpenCode](https://opencode.ai) with two Godot MCP servers for AI-assisted Godot game development.
 
 Ideal for indie or solo game developers, which simply would like solid tooling without wanting to run an entire game studio using AI.
 
@@ -34,7 +34,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 
 ```bash
 git clone <this-repo>
-cd claude-code-godot-setup
+cd godot-agents-devcontainer
 npm install
 ```
 
@@ -274,7 +274,7 @@ devcontainer exec --workspace-folder . ping -c 1 host.docker.internal
 
 ### Login doesn't persist
 
-Credentials are stored in the Docker volume `claude-code-config-<id>`. If you destroy the volume (e.g., `docker volume prune`), you'll need to log in again.
+Credentials are stored in the Docker volume `godot-agents-config-<id>`. If you destroy the volume (e.g., `docker volume prune`), you'll need to log in again.
 
 ### Godot LSP connection refused
 
