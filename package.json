@@ -13,6 +13,7 @@
     "devcontainer:down": "./scripts/bridge.sh stop; CID=$(docker ps -aq -f label=devcontainer.local_folder=$(pwd)); [ -n \"$CID\" ] && docker rm -f $CID && echo 'Container removed' || echo 'No container found'",
     "bridge:start": "./scripts/bridge.sh start",
     "bridge:stop": "./scripts/bridge.sh stop",
+    "bridge:status": "./scripts/bridge.sh status",
     "devcontainer:shell": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . zsh",
     "install-godot-addon": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . npx @satelliteoflove/godot-mcp --install-addon /workspace"
   },

@@ -52,4 +52,24 @@ EOF
 [ -f "$USER_CONFIG/AGENTS.md" ] && ln -sf "$USER_CONFIG/AGENTS.md" /home/node/.config/opencode/AGENTS.md
 
 # --- Port forwarding: LSP proxy for container-side access ---
-nohup socat TCP-LISTEN:6005,fork,reuseaddr TCP:host.docker.internal:6005 >/dev/null 2>&1 &
+# Wait for host.docker.internal to be resolvable
+for i in $(seq 1 10); do
+  getent hosts host.docker.internal >/dev/null 2>&1 && break
+  sleep 0.5
+done
+
+# Kill any stale socat on port 6005
+pkill -f "socat TCP-LISTEN:6005" 2>/dev/null || true
+sleep 0.2
+
+# Start socat relay with logging
+nohup socat TCP-LISTEN:6005,fork,reuseaddr TCP:host.docker.internal:6005 \
+  > /tmp/socat-lsp.log 2>&1 &
+
+# Verify it's listening
+sleep 0.5
+if ss -tln | grep -q ':6005'; then
+  echo "LSP relay listening on container localhost:6005"
+else
+  echo "WARNING: LSP relay failed to start. Check /tmp/socat-lsp.log"
+fi

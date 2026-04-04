@@ -89,8 +89,35 @@ start_bridge() {
   $ok && echo "Bridge running." || echo "Some ports failed to bind."
 }
 
+status_bridge() {
+  if ! needs_bridge; then
+    echo "Bridge not needed on ${OS} (Docker Desktop handles host.docker.internal natively)"
+    return 0
+  fi
+
+  local gateway
+  gateway=$(get_gateway)
+  if [ -z "$gateway" ]; then
+    echo "Error: Could not determine Docker bridge gateway IP"
+    return 1
+  fi
+
+  local ok=true
+  for port in "$GODOT_WS_PORT" "$GODOT_LSP_PORT"; do
+    if ss -tln | grep -q "${gateway}:${port}"; then
+      echo "  ${gateway}:${port} -> 127.0.0.1:${port} ✓"
+    else
+      echo "  ${gateway}:${port} NOT listening ✗"
+      ok=false
+    fi
+  done
+
+  $ok && echo "Bridge healthy." || echo "Some ports not bridged — run '$0 start' to fix."
+}
+
 case "${1:-start}" in
-  start) start_bridge ;;
-  stop)  stop_bridge ;;
-  *)     echo "Usage: $0 {start|stop}" ;;
+  start)  start_bridge ;;
+  stop)   stop_bridge ;;
+  status) status_bridge ;;
+  *)      echo "Usage: $0 {start|stop|status}" ;;
 esac
