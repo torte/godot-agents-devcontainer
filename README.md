@@ -54,8 +54,8 @@ GODOT_PROJECT_PATH=/home/you/projects/my-godot-game
 # Default: $HOME/.claude (standard Claude Code setup)
 CLAUDE_USER_CONFIG_DIR=$HOME/.claude
 
-# Optional: Godot headless CLI version (default: 4.6.1)
-# GODOT_VERSION=4.6.1
+# Optional: Godot headless CLI version (default: 4.6.2)
+# GODOT_VERSION=4.6.2
 ```
 
 `CLAUDE_USER_CONFIG_DIR` should point to a directory containing any of:
@@ -124,20 +124,20 @@ npm run devcontainer:down
 
 ## Available Commands
 
-| Command                             | Description                                                              |
-| ----------------------------------- | ------------------------------------------------------------------------ |
-| `npm run devcontainer:build`        | Build the container image                                                |
-| `npm run devcontainer:up`           | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
-| `npm run devcontainer:down`         | Stop and remove the container (auto-stops port bridge on Linux)          |
-| `npm run devcontainer:shell`        | Open a shell inside the container                                        |
-| `npm run bridge:start`              | Manually start host-side port bridge (Linux only; no-op on macOS/Windows) |
-| `npm run bridge:stop`               | Manually stop the port bridge (Linux only)                               |
-| `npm run claude`                    | Launch Claude Code with `--dangerously-skip-permissions`                 |
-| `npm run claude:resume`             | Resume a previous Claude Code session                                    |
-| `npm run claude:prompt -- "prompt"` | Run a one-shot prompt                                                    |
-| `npm run opencode`                  | Launch OpenCode TUI                                                      |
-| `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                    |
-| `npm run install-godot-addon`       | Install godot-mcp addon into the Godot project                           |
+| Command                               | Description                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------- |
+| `npm run devcontainer:build`          | Build the container image                                                        |
+| `npm run devcontainer:up`             | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
+| `npm run devcontainer:down`           | Stop and remove the container (auto-stops port bridge on Linux)                  |
+| `npm run devcontainer:shell`          | Open a shell inside the container                                                |
+| `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)        |
+| `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                       |
+| `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                         |
+| `npm run claude:resume`               | Resume a previous Claude Code session                                            |
+| `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                            |
+| `npm run opencode`                    | Launch OpenCode TUI                                                              |
+| `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                              |
+| `npm run install-godot-addon`         | Install godot-mcp addon into the Godot project                                   |
 
 ## How It Works
 
@@ -206,7 +206,7 @@ The container includes tools that Claude Code can use to generate and manipulate
 
 ## Godot Headless CLI
 
-The container includes the Godot engine binary (v4.6.1 by default), usable via `godot --headless` for:
+The container includes the Godot engine binary (v4.6.2 by default), usable via `godot --headless` for:
 
 - **Running scenes**: `godot --headless --path /workspace -s res://script.gd`
 - **Automated testing**: Run test frameworks like GUT or GdUnit4 from the command line
@@ -233,12 +233,12 @@ On first launch, use the `/connect` command inside OpenCode to add your API cred
 
 Both Claude Code and OpenCode share the same Godot MCP servers — the container startup script configures them for both tools automatically. Your skills and instructions (`CLAUDE.md`, `AGENTS.md`, `skills/`) are also shared:
 
-| Feature | Claude Code | OpenCode |
-| --- | --- | --- |
-| MCP servers | Configured via `claude mcp add` | Configured via `opencode.json` |
-| Global rules | `CLAUDE.md` | `AGENTS.md` (falls back to `CLAUDE.md`) |
-| Skills | `~/.claude/skills/` | Reads from `~/.claude/skills/` |
-| Permissions | `--dangerously-skip-permissions` | `"permission": { "*": "allow" }` in config |
+| Feature      | Claude Code                      | OpenCode                                   |
+| ------------ | -------------------------------- | ------------------------------------------ |
+| MCP servers  | Configured via `claude mcp add`  | Configured via `opencode.json`             |
+| Global rules | `CLAUDE.md`                      | `AGENTS.md` (falls back to `CLAUDE.md`)    |
+| Skills       | `~/.claude/skills/`              | Reads from `~/.claude/skills/`             |
+| Permissions  | `--dangerously-skip-permissions` | `"permission": { "*": "allow" }` in config |
 
 ### Model configuration
 

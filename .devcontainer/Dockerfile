@@ -57,7 +57,7 @@ RUN ARCH=$(dpkg --print-architecture) && \
   rm "git-delta_${GIT_DELTA_VERSION}_${ARCH}.deb"
 
 # Install Godot headless CLI
-ARG GODOT_VERSION=4.6.1
+ARG GODOT_VERSION=4.6.2
 RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_linux.x86_64.zip" -O /tmp/godot.zip && \
   unzip -q /tmp/godot.zip -d /tmp/godot && \
   mv /tmp/godot/Godot_v${GODOT_VERSION}-stable_linux.x86_64 /usr/local/bin/godot && \

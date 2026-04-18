@@ -5,13 +5,11 @@
     "args": {
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
       "GIT_DELTA_VERSION": "0.18.2",
-      "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.6.1}",
+      "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.6.2}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
-  "runArgs": [
-    "--add-host=host.docker.internal:host-gateway"
-  ],
+  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
   "customizations": {
     "vscode": {
       "extensions": [
