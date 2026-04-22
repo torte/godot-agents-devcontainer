@@ -64,10 +64,6 @@ RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERS
   chmod +x /usr/local/bin/godot && \
   rm -rf /tmp/godot.zip /tmp/godot
 
-# Install Claude Code via native installer and make available system-wide
-RUN curl -fsSL https://claude.ai/install.sh | bash \
-  && cp /root/.local/bin/claude /usr/local/bin/claude
-
 # Copy startup script
 COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
 RUN chmod +x /home/node/.devcontainer/poststart.sh
@@ -77,7 +73,12 @@ USER node
 
 # Install global packages
 ENV NPM_CONFIG_PREFIX=/usr/local/share/npm-global
-ENV PATH=$PATH:/usr/local/share/npm-global/bin
+ENV PATH=/home/node/.local/bin:/home/node/.opencode/bin:$PATH:/usr/local/share/npm-global/bin
+
+# Install Claude Code and opencode as the node user so their native
+# self-updaters can write to $HOME and keep the binaries current.
+RUN curl -fsSL https://claude.ai/install.sh | bash \
+  && curl -fsSL https://opencode.ai/install | bash
 
 # Set the default shell to zsh rather than sh
 ENV SHELL=/bin/zsh
@@ -96,9 +97,8 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -x
 
-# Install AI coding agents, Godot MCP servers, and 3D asset tools
+# Install Godot MCP servers and 3D asset tools
 RUN npm install -g \
-  opencode-ai \
   @satelliteoflove/godot-mcp \
   @ryanmazzolini/minimal-godot-mcp \
   @gltf-transform/cli \
