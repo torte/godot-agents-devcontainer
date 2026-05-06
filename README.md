@@ -132,6 +132,8 @@ npm run devcontainer:down
 | `npm run devcontainer:shell`          | Open a shell inside the container                                                |
 | `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)        |
 | `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                       |
+| `npm run bridge:status`               | Show whether host-side bridge relays are listening                               |
+| `npm run bridge:doctor`               | End-to-end health check: Godot ports, host bridge, container-side relay         |
 | `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                         |
 | `npm run claude:resume`               | Resume a previous Claude Code session                                            |
 | `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                            |
@@ -231,7 +233,7 @@ On first launch, use the `/connect` command inside OpenCode to add your API cred
 
 ### MCP and skills compatibility
 
-Both Claude Code and OpenCode share the same Godot MCP servers — the container startup script configures them for both tools automatically. Your skills and instructions (`CLAUDE.md`, `AGENTS.md`, `skills/`) are also shared:
+Both Claude Code and OpenCode share the same Godot MCP servers. Claude Code's MCP registration runs at container start; OpenCode's is generated lazily by `npm run opencode` so it doesn't hold the godot-mcp connection when idle. Your skills and instructions (`CLAUDE.md`, `AGENTS.md`, `skills/`) are also shared:
 
 | Feature      | Claude Code                      | OpenCode                                   |
 | ------------ | -------------------------------- | ------------------------------------------ |
@@ -257,11 +259,17 @@ See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the fu
 
 ### MCP servers can't connect to Godot
 
+Run `npm run bridge:doctor` first — it checks every link in the chain (Godot listener, host-side bridge, container-side relay) and prints which one is broken.
+
 - Ensure Godot is running on the host **before** launching Claude Code
 - **Linux**: Verify the port bridge is running (`npm run bridge:start`) — this starts automatically with `devcontainer:up` but may need restarting if Godot was restarted
 - **macOS / Windows**: No bridge needed, but ensure Docker Desktop is running
 - Verify the godot-mcp addon is enabled in Project Settings > Plugins
 - Check that the LSP server is enabled in Editor Settings > Network > Language Server
+
+### "Another MCP server connected and replaced this one"
+
+The godot-mcp addon allows **only one WebSocket client at a time** — when a second client connects (e.g. OpenCode), it disconnects the first (e.g. Claude Code). Run only one AI tool against Godot at a time. OpenCode's MCP servers are now registered lazily by `npm run opencode` (not at container startup), so OpenCode does not squat the connection slot when idle. To switch tools mid-session, exit one before launching the other.
 
 ### Container can't resolve `host.docker.internal`
 

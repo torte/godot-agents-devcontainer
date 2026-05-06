@@ -64,9 +64,10 @@ RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERS
   chmod +x /usr/local/bin/godot && \
   rm -rf /tmp/godot.zip /tmp/godot
 
-# Copy startup script
+# Copy startup and launcher scripts
 COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
-RUN chmod +x /home/node/.devcontainer/poststart.sh
+COPY --chown=node:node opencode-launch.sh /home/node/.devcontainer/opencode-launch.sh
+RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh
 
 # Set up non-root user
 USER node
