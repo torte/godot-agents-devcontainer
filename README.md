@@ -54,8 +54,8 @@ GODOT_PROJECT_PATH=/home/you/projects/my-godot-game
 # Default: $HOME/.claude (standard Claude Code setup)
 CLAUDE_USER_CONFIG_DIR=$HOME/.claude
 
-# Optional: Godot headless CLI version (default: 4.6.2)
-# GODOT_VERSION=4.6.2
+# Optional: Godot headless CLI version (default: 4.6.3)
+# GODOT_VERSION=4.6.3
 ```
 
 `CLAUDE_USER_CONFIG_DIR` should point to a directory containing any of:
@@ -208,7 +208,7 @@ The container includes tools that Claude Code can use to generate and manipulate
 
 ## Godot Headless CLI
 
-The container includes the Godot engine binary (v4.6.2 by default), usable via `godot --headless` for:
+The container includes the Godot engine binary (v4.6.3 by default), usable via `godot --headless` for:
 
 - **Running scenes**: `godot --headless --path /workspace -s res://script.gd`
 - **Automated testing**: Run test frameworks like GUT or GdUnit4 from the command line
