@@ -69,8 +69,8 @@ If you manage your Claude config in a separate repo (e.g., with `CLAUDE.md` as a
 ### 3. Build and start the devcontainer
 
 ```bash
-npm run devcontainer:build
-npm run devcontainer:up
+npm run build
+npm run up
 ```
 
 ### 4. Log in to Claude Code
@@ -110,7 +110,7 @@ This copies the godot-mcp addon into your Godot project's `addons/` directory.
 With Godot running on the host, start the container and launch your preferred AI coding agent:
 
 ```bash
-npm run devcontainer:up
+npm run up
 npm run claude    # or: npm run opencode
 ```
 
@@ -119,17 +119,17 @@ On Linux, a port bridge starts automatically with the container, relaying Godot'
 When done:
 
 ```bash
-npm run devcontainer:down
+npm run down
 ```
 
 ## Available Commands
 
 | Command                               | Description                                                                      |
 | ------------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run devcontainer:build`          | Build the container image                                                        |
-| `npm run devcontainer:up`             | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
-| `npm run devcontainer:down`           | Stop and remove the container (auto-stops port bridge on Linux)                  |
-| `npm run devcontainer:shell`          | Open a shell inside the container                                                |
+| `npm run build`                       | Build the container image                                                        |
+| `npm run up`                          | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
+| `npm run down`                        | Stop and remove the container (auto-stops port bridge on Linux)                  |
+| `npm run shell`                       | Open a shell inside the container                                                |
 | `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)        |
 | `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                       |
 | `npm run bridge:status`               | Show whether host-side bridge relays are listening                               |
@@ -140,6 +140,8 @@ npm run devcontainer:down
 | `npm run opencode`                    | Launch OpenCode TUI                                                              |
 | `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                              |
 | `npm run install-godot-addon`         | Install godot-mcp addon into the Godot project                                   |
+
+> **Note:** `npm up` is a built-in npm alias for `npm update`. Always use `npm run up` (with `run`) to start the container.
 
 ## How It Works
 
@@ -262,7 +264,7 @@ See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the fu
 Run `npm run bridge:doctor` first — it checks every link in the chain (Godot listener, host-side bridge, container-side relay) and prints which one is broken.
 
 - Ensure Godot is running on the host **before** launching Claude Code
-- **Linux**: Verify the port bridge is running (`npm run bridge:start`) — this starts automatically with `devcontainer:up` but may need restarting if Godot was restarted
+- **Linux**: Verify the port bridge is running (`npm run bridge:start`) — this starts automatically with `npm run up` but may need restarting if Godot was restarted
 - **macOS / Windows**: No bridge needed, but ensure Docker Desktop is running
 - Verify the godot-mcp addon is enabled in Project Settings > Plugins
 - Check that the LSP server is enabled in Editor Settings > Network > Language Server
@@ -289,7 +291,7 @@ Credentials are stored in the Docker volume `godot-agents-config-<id>`. If you d
 Godot binds to `127.0.0.1` only.
 
 - **macOS / Windows**: Docker Desktop can reach host localhost ports natively. Ensure Docker Desktop is running and up to date.
-- **Linux**: The host-side bridge relays from the Docker bridge IP to localhost. The bridge starts automatically with `devcontainer:up`. If it still fails:
+- **Linux**: The host-side bridge relays from the Docker bridge IP to localhost. The bridge starts automatically with `npm run up`. If it still fails:
   - Verify socat is installed (`sudo apt-get install socat`)
   - Manually restart the bridge: `npm run bridge:stop && npm run bridge:start`
 
