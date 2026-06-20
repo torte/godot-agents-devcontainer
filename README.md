@@ -56,6 +56,11 @@ CLAUDE_USER_CONFIG_DIR=$HOME/.claude
 
 # Optional: Godot headless CLI version (default: 4.6.3)
 # GODOT_VERSION=4.6.3
+
+# Optional: long-lived Claude Code token so the container stays logged in
+# (only needed if you also use the same Anthropic account elsewhere).
+# See "Staying logged in across days" below.
+# CLAUDE_CODE_OAUTH_TOKEN=
 ```
 
 `CLAUDE_USER_CONFIG_DIR` should point to a directory containing any of:
@@ -82,6 +87,51 @@ npm run claude
 ```
 
 Claude Code will prompt you to authenticate. Credentials are stored in a Docker volume and persist across container restarts.
+
+#### Staying logged in across days (optional long-lived token)
+
+Interactive `claude login` is all you need **if this container is the only place you
+use that Anthropic account**. But if you also run Claude Code on your host (or another
+machine) under the **same account**, the container tends to get logged out — usually on
+the first session of the day. This is not a bug in this setup: Anthropic uses rotating,
+single-use refresh tokens, so when your host refreshes the account's token it invalidates
+the copy stored in the container's volume.
+
+The fix is a **long-lived token** that is independent of that rotation. It's optional — leave
+`CLAUDE_CODE_OAUTH_TOKEN` unset and everything works as before.
+
+1. **Requirements:** an active Claude subscription (Pro, Max, or Team). This token is created
+   from your **Claude subscription account** via the CLI below — it is *not* a
+   `console.anthropic.com` API key (those bill against the pay-as-you-go API, not your
+   subscription).
+2. On a machine that has a browser **and** Claude Code installed (e.g. your host, not the
+   headless container), run:
+   ```bash
+   claude setup-token
+   ```
+   Complete the browser sign-in. It prints a token and the line
+   `export CLAUDE_CODE_OAUTH_TOKEN=<token>`. Copy the `<token>` value.
+3. Add it to `.env` (which is git-ignored — never commit it):
+   ```bash
+   CLAUDE_CODE_OAUTH_TOKEN=<token>
+   ```
+4. Recreate the container so the token is injected:
+   ```bash
+   npm run up
+   ```
+   From now on `npm run claude` authenticates with the token automatically — no `claude login`
+   needed, and it survives shutdowns and multi-day gaps.
+
+Notes:
+- **Inference-only.** Long-lived tokens are scoped to inference, which covers normal coding.
+- **Expiry.** The token is long-lived (about a year), not infinite — regenerate with
+  `claude setup-token` when it eventually expires.
+- If the token is set, it **overrides** any interactive login. To go back to `claude login`,
+  blank out `CLAUDE_CODE_OAUTH_TOKEN` in `.env` and run `npm run up` again.
+- **Still see a login screen after setting the token?** A leftover `~/.claude/.credentials.json`
+  from a previous interactive login can make the TUI prompt even though the token authenticates
+  fine. `npm run up` clears it automatically when the token is set; to fix it immediately,
+  delete that file once (`npm run shell` → `rm ~/.claude/.credentials.json`).
 
 ### 5. Set up Godot for MCP integration
 
@@ -285,6 +335,11 @@ devcontainer exec --workspace-folder . ping -c 1 host.docker.internal
 ### Login doesn't persist
 
 Credentials are stored in the Docker volume `godot-agents-config-<id>`. If you destroy the volume (e.g., `docker volume prune`), you'll need to log in again.
+
+If you get logged out **repeatedly — typically on the first session of the day** — and you
+also run Claude Code elsewhere under the **same Anthropic account**, that's the rotating
+refresh token being invalidated across clients, not lost credentials. Set a long-lived
+`CLAUDE_CODE_OAUTH_TOKEN` as described in [Staying logged in across days](#staying-logged-in-across-days-optional-long-lived-token).
 
 ### Godot LSP connection refused
 

@@ -25,6 +25,12 @@ LSP-based diagnostics via port 6005:
 
 Run `claude login` inside the container on first use. Credentials persist in a Docker volume across container restarts.
 
+If you also run Claude Code on the host under the **same Anthropic account**, the
+container can get logged out (usually the first session of the day): the account's
+rotating refresh token is invalidated by whichever client refreshed most recently.
+To avoid this, set an optional long-lived token (`CLAUDE_CODE_OAUTH_TOKEN`) in `.env`
+— see README "Staying logged in across days". Leave it unset to keep normal login.
+
 ## Prerequisites
 
 For the MCP servers to work, the host machine must have:
