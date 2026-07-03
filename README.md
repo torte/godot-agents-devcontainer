@@ -307,6 +307,68 @@ To change the default model, create or edit `opencode.json` in your Godot projec
 
 See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the full list of supported providers and models.
 
+## Running Without the Devcontainer
+
+You don't need the devcontainer to use the Godot MCP servers — both `godot-mcp` and `minimal-godot-mcp` are plain npm packages, and running your agent natively on the same machine as Godot is actually simpler than the container setup: Godot binds to `127.0.0.1`, and a native agent process is already on `127.0.0.1` with it, so none of the bridging machinery (socat, `host.docker.internal`) is needed.
+
+What you give up: the container's sandboxing/isolation, and the auto-installed asset-generation tools (ImageMagick, Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf) — install those yourself if you want them.
+
+### Setup
+
+1. Install the godot-mcp addon and enable Godot's LSP server as described in step 5 above ("Set up Godot for MCP integration") — identical whether or not you use the container.
+2. Install the MCP server packages globally (or let `npx` fetch them on demand at connect time):
+   ```bash
+   npm install -g @satelliteoflove/godot-mcp @ryanmazzolini/minimal-godot-mcp
+   ```
+3. Register the MCP servers with your agent, pointing at `127.0.0.1` instead of `host.docker.internal`:
+
+   **Claude Code:**
+   ```bash
+   claude mcp add godot-mcp -s user \
+     -e GODOT_HOST=127.0.0.1 \
+     -e GODOT_PORT=6550 \
+     -- npx -y @satelliteoflove/godot-mcp
+
+   claude mcp add minimal-godot-mcp -s user \
+     -e GODOT_LSP_HOST=127.0.0.1 \
+     -e GODOT_LSP_PORT=6005 \
+     -e GODOT_WORKSPACE_PATH=/absolute/path/to/your/godot-project \
+     -- npx -y @ryanmazzolini/minimal-godot-mcp
+   ```
+
+   **OpenCode:** add the equivalent block to `opencode.json` in your Godot project root:
+   ```json
+   {
+     "mcp": {
+       "godot-mcp": {
+         "type": "local",
+         "command": ["npx", "-y", "@satelliteoflove/godot-mcp"],
+         "environment": {
+           "GODOT_HOST": "127.0.0.1",
+           "GODOT_PORT": "6550"
+         }
+       },
+       "minimal-godot-mcp": {
+         "type": "local",
+         "command": ["npx", "-y", "@ryanmazzolini/minimal-godot-mcp"],
+         "environment": {
+           "GODOT_LSP_HOST": "127.0.0.1",
+           "GODOT_LSP_PORT": "6005",
+           "GODOT_WORKSPACE_PATH": "/absolute/path/to/your/godot-project"
+         }
+       }
+     }
+   }
+   ```
+4. Start Godot, then launch your agent as usual (`claude` / `opencode`) from your project directory.
+
+### Notes
+
+- No port bridge is needed on any platform — `127.0.0.1` reaches Godot directly.
+- Only one MCP client can hold the godot-mcp WebSocket connection at a time — the same "Another MCP server connected and replaced this one" behavior applies if you run Claude Code and OpenCode against Godot simultaneously (see Troubleshooting below).
+- `.devcontainer/poststart.sh` patches `minimal-godot-mcp`'s `diagnostics-manager.js` so Godot's `workspaceChange` LSP notification doesn't overwrite `GODOT_WORKSPACE_PATH` with an unreachable container path. Running natively this mismatch shouldn't occur, since your workspace path already matches what Godot reports — but if diagnostics start resolving to the wrong file paths, that patch is the place to look.
+- Skills and `CLAUDE.md`/`AGENTS.md` are read directly from wherever your agent normally looks (e.g. `~/.claude`) — no `CLAUDE_USER_CONFIG_DIR` symlink step needed.
+
 ## Troubleshooting
 
 ### MCP servers can't connect to Godot
