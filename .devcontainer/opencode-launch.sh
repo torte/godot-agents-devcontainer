@@ -28,8 +28,8 @@ cat > "$CFG_DIR/opencode.json" <<'EOF'
       "type": "local",
       "command": ["npx", "-y", "@ryanmazzolini/minimal-godot-mcp"],
       "environment": {
-        "GODOT_LSP_HOST": "host.docker.internal",
         "GODOT_LSP_PORT": "6005",
+        "GODOT_DAP_PORT": "6006",
         "GODOT_WORKSPACE_PATH": "/workspace"
       }
     }

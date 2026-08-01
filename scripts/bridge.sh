@@ -23,6 +23,10 @@ needs_bridge() {
 
 GODOT_WS_PORT="${GODOT_WS_PORT:-6550}"
 GODOT_LSP_PORT="${GODOT_LSP_PORT:-6005}"
+GODOT_DAP_PORT="${GODOT_DAP_PORT:-6006}"
+
+# Every port the container needs to reach on the host.
+BRIDGE_PORTS=("$GODOT_WS_PORT" "$GODOT_LSP_PORT" "$GODOT_DAP_PORT")
 
 get_gateway() {
   docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null
@@ -69,17 +73,18 @@ start_bridge() {
     exit 1
   fi
 
-  echo "Starting bridge on ${gateway} (ports ${GODOT_WS_PORT}, ${GODOT_LSP_PORT})..."
+  echo "Starting bridge on ${gateway} (ports ${BRIDGE_PORTS[*]})..."
 
   local log=/tmp/godot-bridge.log
   : > "$log"
-  socat "TCP-LISTEN:${GODOT_WS_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_WS_PORT}" >>"$log" 2>&1 &
-  socat "TCP-LISTEN:${GODOT_LSP_PORT},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${GODOT_LSP_PORT}" >>"$log" 2>&1 &
+  for port in "${BRIDGE_PORTS[@]}"; do
+    socat "TCP-LISTEN:${port},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${port}" >>"$log" 2>&1 &
+  done
 
   sleep 0.5
 
   local ok=true
-  for port in "$GODOT_WS_PORT" "$GODOT_LSP_PORT"; do
+  for port in "${BRIDGE_PORTS[@]}"; do
     if ss -tln | grep -q "${gateway}:${port}"; then
       echo "  ${gateway}:${port} -> 127.0.0.1:${port} ✓"
     else
@@ -111,7 +116,7 @@ status_bridge() {
   fi
 
   local ok=true
-  for port in "$GODOT_WS_PORT" "$GODOT_LSP_PORT"; do
+  for port in "${BRIDGE_PORTS[@]}"; do
     if ss -tln | grep -q "${gateway}:${port}"; then
       echo "  ${gateway}:${port} -> 127.0.0.1:${port} ✓"
     else
@@ -121,6 +126,56 @@ status_bridge() {
   done
 
   $ok && echo "Bridge healthy." || echo "Some ports not bridged — run '$0 start' to fix."
+}
+
+# Compare the addon installed in the Godot project against the one bundled in
+# the container's pinned godot-mcp package. A skew silently disables whole tools
+# rather than erroring, so it is worth checking explicitly. Both reads go
+# through the container so this does not need GODOT_PROJECT_PATH from .env.
+check_addon_version() {
+  local cid=$1
+  local pkg_cfg=/usr/local/share/npm-global/lib/node_modules/@satelliteoflove/godot-mcp/addon/plugin.cfg
+  local read_version='sed -n "s/^version=\"\(.*\)\"/\1/p"'
+
+  local bundled installed
+  bundled=$(docker exec "$cid" bash -c "$read_version $pkg_cfg 2>/dev/null" | tr -d '\r')
+  installed=$(docker exec "$cid" bash -c "$read_version /workspace/addons/godot_mcp/plugin.cfg 2>/dev/null" | tr -d '\r')
+
+  if [ -z "$bundled" ]; then
+    echo "  godot_mcp addon version ✗  (no addon bundled in the container package)"
+    return 1
+  fi
+  if [ -z "$installed" ]; then
+    echo "  godot_mcp addon not installed in /workspace ✗  (restart the container, or run 'npm run install-godot-addon')"
+    return 1
+  fi
+  if [ "$installed" != "$bundled" ]; then
+    echo "  godot_mcp addon ${installed} != package ${bundled} ✗  (restart the container, or run 'npm run install-godot-addon')"
+    return 1
+  fi
+
+  echo "  godot_mcp addon ${installed} matches package ✓"
+
+  # auto_reload is optional and independent of godot-mcp — report it, but never
+  # fail the doctor over it.
+  if docker exec "$cid" bash -c '[ -f /workspace/addons/auto_reload/plugin.cfg ]'; then
+    if docker exec "$cid" bash -c 'grep -q "res://addons/auto_reload/plugin.cfg" /workspace/project.godot 2>/dev/null'; then
+      echo "  auto_reload addon installed + enabled ✓"
+    else
+      echo "  auto_reload addon installed, NOT enabled —  (Project Settings > Plugins)"
+    fi
+  else
+    echo "  auto_reload addon not installed —  (rebuild and restart the container)"
+  fi
+
+  # Installed but never enabled is a distinct failure: the server connects and
+  # every editor command then fails.
+  if docker exec "$cid" bash -c 'grep -q "res://addons/godot_mcp/plugin.cfg" /workspace/project.godot 2>/dev/null'; then
+    echo "  godot_mcp plugin enabled in project.godot ✓"
+  else
+    echo "  godot_mcp plugin NOT enabled ✗  (Project Settings > Plugins, then restart the editor)"
+    return 1
+  fi
 }
 
 doctor_bridge() {
@@ -135,9 +190,12 @@ doctor_bridge() {
 
   echo
   echo "[host] Godot listening on 127.0.0.1?"
-  for port in "$GODOT_WS_PORT" "$GODOT_LSP_PORT"; do
+  for port in "${BRIDGE_PORTS[@]}"; do
     if ss -tln | grep -qE "127\.0\.0\.1:${port} "; then
       echo "  127.0.0.1:${port} ✓"
+    elif [ "$port" = "$GODOT_DAP_PORT" ]; then
+      # DAP only powers minimal-godot-mcp's get_console_output — optional.
+      echo "  127.0.0.1:${port} —  (DAP off; enable Editor Settings > Network > Debug Adapter)"
     else
       echo "  127.0.0.1:${port} ✗  (start the Godot editor and verify port settings)"
       fail=true
@@ -152,7 +210,7 @@ doctor_bridge() {
     echo "  Could not determine Docker bridge gateway IP ✗"
     fail=true
   else
-    for port in "$GODOT_WS_PORT" "$GODOT_LSP_PORT"; do
+    for port in "${BRIDGE_PORTS[@]}"; do
       if ss -tln | grep -q "${gateway}:${port}"; then
         echo "  ${gateway}:${port} ✓"
       else
@@ -170,26 +228,32 @@ doctor_bridge() {
     echo "  No devcontainer found for $(pwd) — skipping container checks."
   else
     echo "  Container: $cid"
-    if docker exec "$cid" bash -c 'ss -tln 2>/dev/null | grep -q ":6005 "'; then
-      echo "  container :6005 (LSP relay socat) ✓"
-    else
-      echo "  container :6005 (LSP relay socat) ✗  (poststart watchdog not running)"
-      fail=true
-    fi
+    for port in "$GODOT_LSP_PORT" "$GODOT_DAP_PORT"; do
+      if docker exec "$cid" bash -c "ss -tln 2>/dev/null | grep -q ':${port} '"; then
+        echo "  container :${port} (relay socat) ✓"
+      else
+        echo "  container :${port} (relay socat) ✗  (poststart watchdog not running)"
+        fail=true
+      fi
+    done
     if docker exec "$cid" bash -c 'getent hosts host.docker.internal >/dev/null'; then
       echo "  host.docker.internal resolvable from container ✓"
     else
       echo "  host.docker.internal resolvable from container ✗"
       fail=true
     fi
-    for port in "$GODOT_LSP_PORT" "$GODOT_WS_PORT"; do
+    for port in "${BRIDGE_PORTS[@]}"; do
       if docker exec "$cid" bash -c "timeout 1 bash -c '</dev/tcp/host.docker.internal/${port}' 2>/dev/null"; then
         echo "  container -> host.docker.internal:${port} ✓"
+      elif [ "$port" = "$GODOT_DAP_PORT" ]; then
+        echo "  container -> host.docker.internal:${port} —  (DAP off, optional)"
       else
         echo "  container -> host.docker.internal:${port} ✗"
         fail=true
       fi
     done
+
+    check_addon_version "$cid" || fail=true
   fi
 
   echo

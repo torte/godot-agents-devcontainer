@@ -67,6 +67,7 @@ RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERS
 # Copy startup and launcher scripts
 COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
 COPY --chown=node:node opencode-launch.sh /home/node/.devcontainer/opencode-launch.sh
+COPY --chown=node:node addons /home/node/.devcontainer/addons
 RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh
 
 # Set up non-root user
@@ -98,10 +99,13 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
   -a "export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhistory/.bash_history" \
   -x
 
-# Install Godot MCP servers and 3D asset tools
+# Install Godot MCP servers and 3D asset tools.
+# The MCP servers are pinned: godot-mcp ships the Godot addon that poststart.sh
+# installs into the project, so an unpinned bump would silently change both the
+# tool surface and the addon written into the user's Godot project.
 RUN npm install -g \
-  @satelliteoflove/godot-mcp \
-  @ryanmazzolini/minimal-godot-mcp \
+  @satelliteoflove/godot-mcp@4.1.0 \
+  @ryanmazzolini/minimal-godot-mcp@0.1.6 \
   @gltf-transform/cli \
   obj2gltf \
   fbx2gltf

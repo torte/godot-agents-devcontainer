@@ -8,8 +8,9 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 
 - **Claude Code CLI** running with `--dangerously-skip-permissions` inside a sandboxed container
 - **[OpenCode](https://opencode.ai)** — Alternative AI coding agent with multi-provider support (OpenAI, Anthropic, Google, local models, etc.)
-- **[godot-mcp](https://github.com/satelliteoflove/godot-mcp)** — Full Godot editor integration (11 tools): scene manipulation, node management, script editing, documentation lookup, game testing
+- **[godot-mcp](https://github.com/satelliteoflove/godot-mcp)** — Full Godot editor integration (21 tools, 86 actions): scene and node editing, resource and animation authoring, plus a full playtesting loop — run the game, inject input, screenshot it, step the game clock, and read live runtime state
 - **[minimal-godot-mcp](https://github.com/ryanmazzolini/minimal-godot-mcp)** — LSP-based diagnostics (4 tools): GDScript error checking, workspace scanning, console output
+- **`auto_reload` addon** — reloads the open scene and its scripts within ~1s of an external change, so files written from inside the container show up in the editor without a manual reload ([vendored from GoPeak](https://github.com/HaD0Yun/Doyunha-Gopeak), MIT)
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
 
@@ -137,11 +138,17 @@ Notes:
 
 #### Install the godot-mcp addon
 
+The addon is installed into your Godot project's `addons/` directory
+**automatically every time the container starts**, from the version pinned in
+the image. This keeps the addon and the MCP server in lockstep — a mismatched
+addon does not error, it silently drops whole tools. Re-running is a no-op when
+the versions already match, and it will never downgrade a newer addon.
+
+To install it manually (for example when running without the devcontainer):
+
 ```bash
 npm run install-godot-addon
 ```
-
-This copies the godot-mcp addon into your Godot project's `addons/` directory.
 
 #### Enable the addon in Godot
 
@@ -149,11 +156,34 @@ This copies the godot-mcp addon into your Godot project's `addons/` directory.
 2. Go to **Project > Project Settings > Plugins**
 3. Enable the **godot-mcp** plugin
 
+After the addon is upgraded to a new version, re-enable the plugin and restart
+the editor so the new commands register.
+
+#### Enable auto-reload (recommended)
+
+In the same **Plugins** list, also enable **Godot MCP Auto Reload**. It polls
+once a second and reloads the open scene and its attached scripts when they
+change on disk, so edits an agent makes from inside the container appear in the
+editor without you doing anything.
+
+Its scope is narrower than the name suggests: it watches **only the currently
+edited scene and the scripts attached to nodes in it**. For anything else, the
+agent should call `godot_scene reload` explicitly. Details and provenance in
+[`.devcontainer/addons/README.md`](.devcontainer/addons/README.md).
+
 #### Enable the LSP server (for minimal-godot-mcp)
 
 1. In Godot, go to **Editor > Editor Settings > Network > Language Server**
 2. Ensure the language server is **enabled**
 3. Note the port (default: 6005)
+
+#### Enable the Debug Adapter (optional)
+
+Only needed for `get_console_output`.
+
+1. In Godot, go to **Editor > Editor Settings > Network > Debug Adapter**
+2. Ensure the debug adapter is **enabled**
+3. Note the port (default: 6006 — override with `GODOT_DAP_PORT` if changed)
 
 ### 6. Start developing
 
@@ -183,7 +213,7 @@ npm run down
 | `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)        |
 | `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                       |
 | `npm run bridge:status`               | Show whether host-side bridge relays are listening                               |
-| `npm run bridge:doctor`               | End-to-end health check: Godot ports, host bridge, container-side relay         |
+| `npm run bridge:doctor`               | End-to-end health check: Godot ports, host bridge, container-side relay, addon version |
 | `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                         |
 | `npm run claude:resume`               | Resume a previous Claude Code session                                            |
 | `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                            |
@@ -203,7 +233,7 @@ Host Machine                          Container
 | Godot 4.5+       |  host.docker.    | Claude Code CLI    |
 |  127.0.0.1:6550  |  internal        |   godot-mcp        |
 |  127.0.0.1:6005  | <--------------> |   minimal-godot-   |
-|                  |  (native)        |     mcp            |
+|  127.0.0.1:6006  |  (native)        |     mcp            |
 +------------------+                  +--------------------+
                                       | /workspace (bind)  |
                                       |   = Godot project  |
@@ -224,7 +254,7 @@ Host Machine                          Container
 | Godot 4.5+       |                  | Claude Code CLI    |
 |  127.0.0.1:6550  |   bridge.sh      |   godot-mcp        |
 |  127.0.0.1:6005  | ------------->   |   minimal-godot-   |
-|                  |  (host socat)    |     mcp            |
+|  127.0.0.1:6006  |  (host socat)    |     mcp            |
 +------------------+  binds on        +--------------------+
                       docker bridge    | /workspace (bind)  |
                       172.17.0.1       |   = Godot project  |
@@ -315,11 +345,16 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
 
 ### Setup
 
-1. Install the godot-mcp addon and enable Godot's LSP server as described in step 5 above ("Set up Godot for MCP integration") — identical whether or not you use the container.
-2. Install the MCP server packages globally (or let `npx` fetch them on demand at connect time):
+1. Enable Godot's LSP server (and optionally the Debug Adapter) as described in step 5 above ("Set up Godot for MCP integration") — identical whether or not you use the container.
+2. Install the MCP server packages globally. Pin them: godot-mcp ships the Godot addon, and an addon that does not match the server silently drops whole tools.
    ```bash
-   npm install -g @satelliteoflove/godot-mcp @ryanmazzolini/minimal-godot-mcp
+   npm install -g @satelliteoflove/godot-mcp@4.1.0 @ryanmazzolini/minimal-godot-mcp@0.1.6
    ```
+   Then install the addon into your project and enable it in **Project > Project Settings > Plugins**:
+   ```bash
+   godot-mcp --install-addon /absolute/path/to/your/godot-project
+   ```
+   Re-run that command after any version bump — it is idempotent.
 3. Register the MCP servers with your agent, pointing at `127.0.0.1` instead of `host.docker.internal`:
 
    **Claude Code:**
@@ -330,8 +365,8 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
      -- npx -y @satelliteoflove/godot-mcp
 
    claude mcp add minimal-godot-mcp -s user \
-     -e GODOT_LSP_HOST=127.0.0.1 \
      -e GODOT_LSP_PORT=6005 \
+     -e GODOT_DAP_PORT=6006 \
      -e GODOT_WORKSPACE_PATH=/absolute/path/to/your/godot-project \
      -- npx -y @ryanmazzolini/minimal-godot-mcp
    ```
@@ -352,8 +387,8 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
          "type": "local",
          "command": ["npx", "-y", "@ryanmazzolini/minimal-godot-mcp"],
          "environment": {
-           "GODOT_LSP_HOST": "127.0.0.1",
            "GODOT_LSP_PORT": "6005",
+           "GODOT_DAP_PORT": "6006",
            "GODOT_WORKSPACE_PATH": "/absolute/path/to/your/godot-project"
          }
        }

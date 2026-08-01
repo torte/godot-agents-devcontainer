@@ -6,20 +6,56 @@ This project runs in a devcontainer with two Godot MCP servers connected to a Go
 
 ## MCP Servers
 
-### godot-mcp (11 tools)
-Full Godot editor integration via WebSocket (port 6550):
-- Visual inspection: editor state, scenes, running games, errors, performance
-- Node/resource inspection: scene tree, properties, resources
-- Modification: scenes, nodes, scripts, animations, tilemaps
-- Game testing: runtime execution, input injection
-- Documentation: `godot_docs` for on-demand Godot docs retrieval
+### godot-mcp (21 tools, 86 actions)
+Full Godot editor integration via WebSocket (port 6550). Tools are
+action-dispatched — pass an `action` naming the operation.
+
+**Playing the game** (verify your own work instead of guessing):
+- `godot_editor_edit` — `run` / `stop` / `restart` the game
+- `godot_input` — inject input into the running game: `sequence` (actions,
+  joypad, raw keys, mouse-look), `type_text`, `get_map`
+- `godot_editor_read` — `screenshot_game`, `screenshot_editor`, `get_state`,
+  `get_selection`, `get_log_messages`, `get_stack_trace`
+- `godot_runtime_state` — live game state as JSON: `digest`, `watch_start` /
+  `watch_collect` / `watch_stop`
+- `godot_game_time` — deterministic playtesting: `freeze`, `step`,
+  `step_until`, `thaw`, `status`
+- `godot_exec` — `run` GDScript inside the running game to set up scenarios
+- `godot_profiler` — metric snapshots and per-frame series with spike detection
+
+**Editing and inspection:**
+- `godot_scene` — `open`, `save`, `reload` (picks up on-disk edits made outside
+  the editor — use this after writing a `.tscn` from the container)
+- `godot_node_read` / `godot_node_edit` — scene tree, effective properties
+- `godot_resource` — type-aware resource inspection (SpriteFrames, TileSet,
+  materials, textures)
+- `godot_animation_read` / `godot_animation_edit` — keyframe authoring
+- `godot_tilemap_read` / `godot_tilemap_edit`, `godot_gridmap_read` /
+  `godot_gridmap_edit`, `godot_scene3d`, `godot_validate_meshes`
+- `godot_project` — `get_info`, `get_settings`, `addon_status`, `check_stale`
+- `godot_docs` — on-demand Godot documentation retrieval
+
+Note: v4 removed scene/node *creation* actions on purpose — write `.tscn` files
+directly, then verify with `godot_node_read`.
 
 ### minimal-godot-mcp (4 tools)
-LSP-based diagnostics via port 6005:
+LSP-based diagnostics via port 6005, plus DAP console capture via port 6006:
 - `get_diagnostics` — analyze single GDScript files
 - `scan_workspace_diagnostics` — examine all .gd files in workspace
-- `get_console_output` — retrieve debug session output
+- `get_console_output` — retrieve debug session output (needs DAP enabled)
 - `clear_console_output` — clear buffered console entries
+
+## Auto-reload addon
+
+The `auto_reload` editor plugin polls once a second and reloads externally
+changed files, so scripts you write into `/workspace` usually appear in the
+editor on their own.
+
+It only watches the **currently edited scene and the scripts attached to nodes
+in it**. Outside that scope — a new file, a scene that is not open — nothing
+happens automatically, so still call `godot_scene reload` when you have edited a
+`.tscn` the editor has open, or when you need a change reflected right now
+rather than within a second.
 
 ## Authentication
 
@@ -35,8 +71,16 @@ To avoid this, set an optional long-lived token (`CLAUDE_CODE_OAUTH_TOKEN`) in `
 
 For the MCP servers to work, the host machine must have:
 1. **Godot 4.5+** editor running
-2. **godot-mcp addon** installed and enabled (Project > Project Settings > Plugins)
+2. **godot-mcp addon** enabled (Project > Project Settings > Plugins). The
+   addon itself is installed automatically at container start from the pinned
+   npm package, so it can never drift out of sync with the server — but a
+   version bump still needs the plugin re-enabled and the editor restarted.
 3. **LSP server** enabled (Editor > Editor Settings > Network > Language Server)
+4. **Debug Adapter** enabled on port 6006 (optional, only for
+   `get_console_output`)
+
+Run `npm run bridge:doctor` on the host to check all of this end-to-end,
+including addon-vs-package version skew.
 
 ## Workspace
 
