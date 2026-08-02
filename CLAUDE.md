@@ -2,7 +2,7 @@
 
 ## Environment
 
-This project runs in a devcontainer with two Godot MCP servers connected to a Godot editor on the host machine.
+This project runs in a devcontainer with two Godot MCP servers connected to a Godot editor on the host machine, plus a Blender MCP server connected to an optional Blender session on the same host.
 
 ## MCP Servers
 
@@ -45,6 +45,39 @@ LSP-based diagnostics via port 6005, plus DAP console capture via port 6006:
 - `get_console_output` — retrieve debug session output (needs DAP enabled)
 - `clear_console_output` — clear buffered console entries
 
+### blender-mcp (22 tools)
+Drives a Blender session running on the **host** via a socket on port 9876.
+Blender is not in this container — if these tools fail to connect, Blender is
+either not running or its BlenderMCP addon has not been connected (the user must
+press **Connect to MCP server** in the View3D sidebar after each launch).
+
+**Inspection:**
+- `get_scene_info` — objects, materials, and scene structure
+- `get_object_info` — detail on a single named object
+- `get_viewport_screenshot` — what the user is actually looking at
+
+**Scripting:**
+- `execute_blender_code` — run arbitrary Python against the scene. This is the
+  workhorse; most modelling is done through it. It executes **on the host**,
+  outside this container's isolation, so treat it with the same care as any
+  host-side action: no destructive filesystem work, and prefer `bpy` operations
+  scoped to the scene.
+
+**Asset sourcing** (each needs its integration enabled in the addon sidebar;
+check first rather than assuming):
+- Poly Haven (free) — `get_polyhaven_status`, `get_polyhaven_categories`,
+  `search_polyhaven_assets`, `download_polyhaven_asset`, `set_texture`
+- Sketchfab — `get_sketchfab_status`, `search_sketchfab_models`,
+  `get_sketchfab_model_preview`, `download_sketchfab_model`
+- Hyper3D Rodin (text/image to 3D) — `get_hyper3d_status`,
+  `generate_hyper3d_model_via_text`, `generate_hyper3d_model_via_images`,
+  `poll_rodin_job_status`, `import_generated_asset`
+- Hunyuan3D — `get_hunyuan3d_status`, `generate_hunyuan3d_model`,
+  `poll_hunyuan_job_status`, `import_generated_asset_hunyuan`
+
+For batch or headless mesh work that does not need a live Blender session, the
+container's own `trimesh` / `gltf-transform` tooling is usually the better fit.
+
 ## Auto-reload addon
 
 The `auto_reload` editor plugin polls once a second and reloads externally
@@ -78,9 +111,14 @@ For the MCP servers to work, the host machine must have:
 3. **LSP server** enabled (Editor > Editor Settings > Network > Language Server)
 4. **Debug Adapter** enabled on port 6006 (optional, only for
    `get_console_output`)
+5. **Blender 3.0+** running with a GUI, its BlenderMCP addon enabled, and
+   **Connect to MCP server** pressed in the View3D sidebar (optional, only for
+   the `blender-mcp` tools). The addon lives at `.devcontainer/blender/addon.py`
+   in the devcontainer repo on the host.
 
 Run `npm run bridge:doctor` on the host to check all of this end-to-end,
-including addon-vs-package version skew.
+including addon-vs-package version skew. Ports 6006 and 9876 are reported as
+optional there, so a green doctor does not mean Blender is connected.
 
 ## Workspace
 

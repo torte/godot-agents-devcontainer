@@ -24,9 +24,23 @@ needs_bridge() {
 GODOT_WS_PORT="${GODOT_WS_PORT:-6550}"
 GODOT_LSP_PORT="${GODOT_LSP_PORT:-6005}"
 GODOT_DAP_PORT="${GODOT_DAP_PORT:-6006}"
+BLENDER_PORT="${BLENDER_PORT:-9876}"
 
 # Every port the container needs to reach on the host.
-BRIDGE_PORTS=("$GODOT_WS_PORT" "$GODOT_LSP_PORT" "$GODOT_DAP_PORT")
+BRIDGE_PORTS=("$GODOT_WS_PORT" "$GODOT_LSP_PORT" "$GODOT_DAP_PORT" "$BLENDER_PORT")
+
+# Ports whose absence is normal rather than broken, so the doctor reports them
+# as "—" instead of failing: DAP is only needed for get_console_output, and
+# Blender is a separate application that is usually not running.
+OPTIONAL_PORTS=("$GODOT_DAP_PORT" "$BLENDER_PORT")
+
+is_optional_port() {
+  local needle=$1 p
+  for p in "${OPTIONAL_PORTS[@]}"; do
+    [ "$p" = "$needle" ] && return 0
+  done
+  return 1
+}
 
 get_gateway() {
   docker network inspect bridge -f '{{range .IPAM.Config}}{{.Gateway}}{{end}}' 2>/dev/null
@@ -194,8 +208,9 @@ doctor_bridge() {
     if ss -tln | grep -qE "127\.0\.0\.1:${port} "; then
       echo "  127.0.0.1:${port} ✓"
     elif [ "$port" = "$GODOT_DAP_PORT" ]; then
-      # DAP only powers minimal-godot-mcp's get_console_output — optional.
       echo "  127.0.0.1:${port} —  (DAP off; enable Editor Settings > Network > Debug Adapter)"
+    elif [ "$port" = "$BLENDER_PORT" ]; then
+      echo "  127.0.0.1:${port} —  (Blender not serving; start it, then BlenderMCP > Connect to MCP server)"
     else
       echo "  127.0.0.1:${port} ✗  (start the Godot editor and verify port settings)"
       fail=true
@@ -245,8 +260,8 @@ doctor_bridge() {
     for port in "${BRIDGE_PORTS[@]}"; do
       if docker exec "$cid" bash -c "timeout 1 bash -c '</dev/tcp/host.docker.internal/${port}' 2>/dev/null"; then
         echo "  container -> host.docker.internal:${port} ✓"
-      elif [ "$port" = "$GODOT_DAP_PORT" ]; then
-        echo "  container -> host.docker.internal:${port} —  (DAP off, optional)"
+      elif is_optional_port "$port"; then
+        echo "  container -> host.docker.internal:${port} —  (optional, not running)"
       else
         echo "  container -> host.docker.internal:${port} ✗"
         fail=true

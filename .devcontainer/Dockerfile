@@ -26,8 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   python3-pip \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Python libraries for asset generation
-RUN pip3 install --break-system-packages Pillow numpy trimesh
+# Install Python libraries for asset generation, plus the Blender MCP server.
+# blender-mcp is pinned because it pairs with a Blender addon installed host-side:
+# a mismatched pair fails silently rather than loudly (see .devcontainer/blender/).
+RUN pip3 install --break-system-packages Pillow numpy trimesh blender-mcp==1.6.5
 
 # Ensure default node user has access to /usr/local/share
 RUN mkdir -p /usr/local/share/npm-global && \

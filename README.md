@@ -11,13 +11,14 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **[godot-mcp](https://github.com/satelliteoflove/godot-mcp)** — Full Godot editor integration (21 tools, 86 actions): scene and node editing, resource and animation authoring, plus a full playtesting loop — run the game, inject input, screenshot it, step the game clock, and read live runtime state
 - **[minimal-godot-mcp](https://github.com/ryanmazzolini/minimal-godot-mcp)** — LSP-based diagnostics (4 tools): GDScript error checking, workspace scanning, console output
 - **`auto_reload` addon** — reloads the open scene and its scripts within ~1s of an external change, so files written from inside the container show up in the editor without a manual reload ([vendored from GoPeak](https://github.com/HaD0Yun/Doyunha-Gopeak), MIT)
+- **[blender-mcp](https://github.com/ahujasid/blender-mcp)** — Drives a Blender session running on your host (22 tools): scene and object inspection, viewport screenshots, arbitrary Python against the scene, and asset sourcing from Poly Haven, Sketchfab, Hyper3D Rodin and Hunyuan3D. Blender stays on the host — only the small Python client is in the container
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
 
 ## What's NOT included
 
 - **Godot specific skills** - This is very subjective and each developer may have different preferences when it comes to skills. The setup will source your skills and global Claude setup based on an environment variable (see [2. Configure environment](#2-configure-environment) in the [Setup](#setup) guide). Personal recommendation for a good comprehensive Godot skill: [Godot skill for Claude Code](https://mcp.directory/skills/godot)
-- **Blender CLI or MCP**: Turned out to be too big for the container and can be covered with some of the light-weight tooling installed with the devcontainer instead
+- **Blender itself**: The Blender application is too big for the container, and batch mesh work is covered by the lighter tooling above (trimesh, gltf-transform). The **Blender MCP** is included though — it talks to a Blender you run on the host, so nothing heavy enters the image. See [Set up Blender](#optional-set-up-blender-for-blender-mcp)
 
 ## Prerequisites
 
@@ -26,8 +27,9 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
   - **Windows (WSL2)**: Docker Desktop with WSL2 backend, or Docker Engine inside WSL2
   - **Linux**: Docker Engine or Docker Desktop
 - **Node.js** (18+) on the host (for npm scripts and devcontainer CLI)
-- **socat** (Linux only) — bridges Godot's localhost ports to the Docker network. Not needed on macOS or Windows where Docker Desktop handles this natively. Install with `sudo apt-get install socat`
+- **socat** (Linux only) — bridges Godot's and Blender's localhost ports to the Docker network. Not needed on macOS or Windows where Docker Desktop handles this natively. Install with `sudo apt-get install socat`
 - **Godot 4.5+** editor installed on the host
+- **Blender 3.0+** on the host — *optional*, only for the Blender MCP. Everything else works without it
 
 ## Setup
 
@@ -185,6 +187,40 @@ Only needed for `get_console_output`.
 2. Ensure the debug adapter is **enabled**
 3. Note the port (default: 6006 — override with `GODOT_DAP_PORT` if changed)
 
+### (Optional) Set up Blender for blender-mcp
+
+Skip this if you don't need Blender. The rest of the setup works without it.
+
+The MCP server in the container talks to an addon running inside Blender on your
+host. The addon is vendored in this repo so it stays version-matched to the
+pinned `blender-mcp` package — installing it from GitHub instead risks the two
+drifting apart and failing silently.
+
+1. In Blender, go to **Edit > Preferences > Add-ons**
+2. On Blender 4.2+, use the dropdown at the top-right and choose
+   **Install legacy Add-on** (upstream's docs say "Install from file", which
+   predates the Extensions platform and no longer matches the UI)
+3. Select `.devcontainer/blender/addon.py` from this repo
+4. Tick **Interface: Blender MCP** to enable it
+5. In the 3D viewport press **N**, open the **BlenderMCP** tab, and click
+   **Connect to MCP server**
+
+Step 5 is needed after **every** Blender launch — the socket server does not
+autostart. Blender must be running with a GUI; the addon refuses to start under
+`blender --background` because its commands are dispatched on the UI thread.
+
+The optional asset integrations (Poly Haven, Sketchfab, Hyper3D Rodin,
+Hunyuan3D) are toggled in that same sidebar tab. Poly Haven is free; the others
+need API keys entered there.
+
+> **Security note.** `execute_blender_code` runs **arbitrary Python on your host**,
+> outside the container's isolation and with your user's privileges. That is the
+> point of the tool, but it means the "Docker provides filesystem and process
+> isolation" property below does not hold for this path. It is a broader
+> exposure than `godot_exec` (full Python rather than GDScript). If that is not a
+> trade you want, leave the addon disabled — the MCP server simply fails to
+> connect and nothing else is affected.
+
 ### 6. Start developing
 
 With Godot running on the host, start the container and launch your preferred AI coding agent:
@@ -234,6 +270,9 @@ Host Machine                          Container
 |  127.0.0.1:6550  |  internal        |   godot-mcp        |
 |  127.0.0.1:6005  | <--------------> |   minimal-godot-   |
 |  127.0.0.1:6006  |  (native)        |     mcp            |
++------------------+                  |   blender-mcp      |
+| Blender 3.0+     |                  |                    |
+|  127.0.0.1:9876  | <--------------> |                    |
 +------------------+                  +--------------------+
                                       | /workspace (bind)  |
                                       |   = Godot project  |
@@ -255,6 +294,9 @@ Host Machine                          Container
 |  127.0.0.1:6550  |   bridge.sh      |   godot-mcp        |
 |  127.0.0.1:6005  | ------------->   |   minimal-godot-   |
 |  127.0.0.1:6006  |  (host socat)    |     mcp            |
++------------------+                  |   blender-mcp      |
+| Blender 3.0+     |                  |                    |
+|  127.0.0.1:9876  | ------------->   |                    |
 +------------------+  binds on        +--------------------+
                       docker bridge    | /workspace (bind)  |
                       172.17.0.1       |   = Godot project  |
@@ -266,6 +308,10 @@ Host Machine                          Container
 ```
 
 Godot binds to `127.0.0.1`, but the container reaches the host via the Docker bridge gateway (`172.17.0.1`). The host-side bridge (`bridge.sh` / socat) relays between these interfaces. Container-side socat forwards `localhost` to `host.docker.internal`.
+
+Blender's addon binds `127.0.0.1:9876` the same way, so it needs the same host-side relay. It needs **no** container-side relay though: `blender-mcp` honours a `BLENDER_HOST` environment variable, so it is simply pointed at `host.docker.internal` directly. (`minimal-godot-mcp` hardcodes `127.0.0.1` in its LSP and DAP clients, which is why those two ports need the extra hop.)
+
+Ports 6006 and 9876 are treated as **optional** by `npm run bridge:doctor` — it reports them as `—` rather than failing, since the Debug Adapter and Blender are both commonly not running.
 
 ### Common to all platforms
 
@@ -355,7 +401,13 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
    godot-mcp --install-addon /absolute/path/to/your/godot-project
    ```
    Re-run that command after any version bump — it is idempotent.
-3. Register the MCP servers with your agent, pointing at `127.0.0.1` instead of `host.docker.internal`:
+3. *(Optional)* For Blender, install the pinned server and the vendored addon:
+   ```bash
+   pip install blender-mcp==1.6.5
+   ```
+   Then install `.devcontainer/blender/addon.py` in Blender as described in
+   "[Set up Blender](#optional-set-up-blender-for-blender-mcp)" above.
+4. Register the MCP servers with your agent, pointing at `127.0.0.1` instead of `host.docker.internal`:
 
    **Claude Code:**
    ```bash
@@ -369,6 +421,9 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
      -e GODOT_DAP_PORT=6006 \
      -e GODOT_WORKSPACE_PATH=/absolute/path/to/your/godot-project \
      -- npx -y @ryanmazzolini/minimal-godot-mcp
+
+   # Optional — Blender. 127.0.0.1 is the default, so the env vars can be omitted.
+   claude mcp add blender-mcp -s user -- blender-mcp
    ```
 
    **OpenCode:** add the equivalent block to `opencode.json` in your Godot project root:
@@ -391,11 +446,15 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
            "GODOT_DAP_PORT": "6006",
            "GODOT_WORKSPACE_PATH": "/absolute/path/to/your/godot-project"
          }
+       },
+       "blender-mcp": {
+         "type": "local",
+         "command": ["blender-mcp"]
        }
      }
    }
    ```
-4. Start Godot, then launch your agent as usual (`claude` / `opencode`) from your project directory.
+5. Start Godot (and Blender, if used), then launch your agent as usual (`claude` / `opencode`) from your project directory.
 
 ### Notes
 

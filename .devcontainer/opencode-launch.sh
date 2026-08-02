@@ -32,6 +32,14 @@ cat > "$CFG_DIR/opencode.json" <<'EOF'
         "GODOT_DAP_PORT": "6006",
         "GODOT_WORKSPACE_PATH": "/workspace"
       }
+    },
+    "blender-mcp": {
+      "type": "local",
+      "command": ["blender-mcp"],
+      "environment": {
+        "BLENDER_HOST": "host.docker.internal",
+        "BLENDER_PORT": "9876"
+      }
     }
   }
 }

@@ -79,6 +79,14 @@ claude mcp add minimal-godot-mcp -s user \
   -e GODOT_WORKSPACE_PATH=/workspace \
   -- npx -y @ryanmazzolini/minimal-godot-mcp
 
+# Blender. Unlike the Godot LSP/DAP clients, blender-mcp genuinely honours a host
+# env var (server.py: os.getenv("BLENDER_HOST", ...)), so it needs no
+# container-side socat relay — only the host-side bridge on 9876.
+claude mcp add blender-mcp -s user \
+  -e BLENDER_HOST=host.docker.internal \
+  -e BLENDER_PORT=9876 \
+  -- blender-mcp
+
 # OpenCode MCP config is generated lazily by .devcontainer/opencode-launch.sh
 # at invocation time, so OpenCode does not squat the single godot-mcp
 # connection slot when no OpenCode session is active.
