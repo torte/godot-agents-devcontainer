@@ -5,7 +5,7 @@
     "args": {
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
       "GIT_DELTA_VERSION": "0.18.2",
-      "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.7.1}",
+      "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.7.2}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
