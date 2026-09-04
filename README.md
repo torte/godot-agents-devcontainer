@@ -29,7 +29,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **Node.js** (18+) on the host (for npm scripts and devcontainer CLI)
 - **socat** (Linux only) — bridges Godot's and Blender's localhost ports to the Docker network. Not needed on macOS or Windows where Docker Desktop handles this natively. Install with `sudo apt-get install socat`
 - **Godot 4.5+** editor installed on the host
-- **Blender 3.0+** on the host — *optional*, only for the Blender MCP. Everything else works without it
+- **Blender 3.0+** on the host — _optional_, only for the Blender MCP. Everything else works without it
 
 ## Setup
 
@@ -104,7 +104,7 @@ The fix is a **long-lived token** that is independent of that rotation. It's opt
 `CLAUDE_CODE_OAUTH_TOKEN` unset and everything works as before.
 
 1. **Requirements:** an active Claude subscription (Pro, Max, or Team). This token is created
-   from your **Claude subscription account** via the CLI below — it is *not* a
+   from your **Claude subscription account** via the CLI below — it is _not_ a
    `console.anthropic.com` API key (those bill against the pay-as-you-go API, not your
    subscription).
 2. On a machine that has a browser **and** Claude Code installed (e.g. your host, not the
@@ -126,6 +126,7 @@ The fix is a **long-lived token** that is independent of that rotation. It's opt
    needed, and it survives shutdowns and multi-day gaps.
 
 Notes:
+
 - **Inference-only.** Long-lived tokens are scoped to inference, which covers normal coding.
 - **Expiry.** The token is long-lived (about a year), not infinite — regenerate with
   `claude setup-token` when it eventually expires.
@@ -139,6 +140,10 @@ Notes:
 ### 5. Set up Godot for MCP integration
 
 #### Install the godot-mcp addon
+
+The addon connects on port 6550 by default — override with `GODOT_WS_PORT` in
+`.env` if you need a different port (for example, running multiple instances
+in parallel; see [Running multiple instances in parallel](#running-multiple-instances-in-parallel)).
 
 The addon is installed into your Godot project's `addons/` directory
 **automatically every time the container starts**, from the version pinned in
@@ -177,7 +182,7 @@ agent should call `godot_scene reload` explicitly. Details and provenance in
 
 1. In Godot, go to **Editor > Editor Settings > Network > Language Server**
 2. Ensure the language server is **enabled**
-3. Note the port (default: 6005)
+3. Note the port (default: 6005 — override with `GODOT_LSP_PORT` if changed)
 
 #### Enable the Debug Adapter (optional)
 
@@ -203,7 +208,8 @@ drifting apart and failing silently.
 3. Select `.devcontainer/blender/addon.py` from this repo
 4. Tick **Interface: Blender MCP** to enable it
 5. In the 3D viewport press **N**, open the **BlenderMCP** tab, and click
-   **Connect to MCP server**
+   **Connect to MCP server** — if you overrode `BLENDER_PORT` in `.env`, set
+   the matching port in that same tab before connecting
 
 Step 5 is needed after **every** Blender launch — the socket server does not
 autostart. Blender must be running with a GUI; the addon refuses to start under
@@ -238,24 +244,70 @@ When done:
 npm run down
 ```
 
+## Running multiple instances in parallel
+
+You can work on several Godot games at once, each in its own devcontainer instance. Each clone of this repo already gets its own container name, image tag, and named volumes automatically — the devcontainer CLI derives them from the clone's own path — so no repo changes are needed for that part. What you do need to handle yourself is port collisions, since several MCP/bridge ports default to the same values across every clone.
+
+1. **Clone this repo again, once per project:**
+
+   ```bash
+   git clone <this-repo> ../my-other-game-devcontainer
+   cd ../my-other-game-devcontainer
+   npm install
+   ```
+
+2. **Give each clone distinct ports.** Copy `.env.example` to `.env`, set `GODOT_PROJECT_PATH` to that project, and set all four port variables to values not used by any other clone running on the same host. For example:
+
+   | Clone          | `GODOT_WS_PORT` | `GODOT_LSP_PORT` | `GODOT_DAP_PORT` | `BLENDER_PORT` |
+   | -------------- | --------------- | ---------------- | ---------------- | -------------- |
+   | 1st (defaults) | 6550            | 6005             | 6006             | 9876           |
+   | 2nd            | 6551            | 6015             | 6016             | 9877           |
+   | 3rd            | 6552            | 6025             | 6026             | 9878           |
+
+   Leaving any of these at the shared default while another instance is running will collide — this is the one failure mode nothing in this repo can catch for you, so double check `.env` in each clone before starting it.
+
+3. **Match the port on the Godot side, per project.** The `godot-mcp` addon's WebSocket port is a per-project Godot setting, stored in that game's own `project.godot` — not something this repo controls. Set it to match `GODOT_WS_PORT` either through the addon's **MCP** panel at the bottom of the Godot editor, or by editing `project.godot` directly:
+
+   ```ini
+   [godot_mcp]
+   port_override_enabled=true
+   port_override=6551
+   ```
+
+4. **LSP/DAP only need attention if you keep two Godot editor windows open at the same time.** Godot's Language Server and Debug Adapter ports (**Editor Settings > Network**) are a single global setting per editor install, not per-project — if you only ever have one Godot editor open (even switching between projects), this never matters, the one running instance just uses the default port. It only becomes a real conflict when two editor _processes_ are open simultaneously: both would try to bind the same default port, and the second one to start simply fails to enable its LSP/DAP for that session (logged in its own Output panel, not a crash, and it won't connect to the other project's server either — the port bind just fails cleanly). Enable **Editor Settings > Network > Language Server** (and Debug Adapter, if used) once — that toggle is global and only needs setting up the first time — then override the port per-launch with Godot's own CLI flags instead of touching that global setting:
+
+   ```bash
+   godot -e --path /path/to/second/project --lsp-port 6015 --dap-port 6016
+   ```
+
+   matching that clone's `GODOT_LSP_PORT`/`GODOT_DAP_PORT`.
+
+5. **Blender:** if you're also running a second Blender session, set its BlenderMCP panel port to match `BLENDER_PORT` before clicking "Connect to MCP server".
+
+6. **Start each instance from its own clone directory:**
+   ```bash
+   npm run build && npm run up && npm run claude   # or: npm run opencode
+   ```
+   Verify each with `npm run bridge:doctor` — it reports that clone's own ports and only touches that clone's own container and bridge relay.
+
 ## Available Commands
 
-| Command                               | Description                                                                      |
-| ------------------------------------- | -------------------------------------------------------------------------------- |
-| `npm run build`                       | Build the container image                                                        |
-| `npm run up`                          | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows) |
-| `npm run down`                        | Stop and remove the container (auto-stops port bridge on Linux)                  |
-| `npm run shell`                       | Open a shell inside the container                                                |
-| `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)        |
-| `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                       |
-| `npm run bridge:status`               | Show whether host-side bridge relays are listening                               |
+| Command                               | Description                                                                            |
+| ------------------------------------- | -------------------------------------------------------------------------------------- |
+| `npm run build`                       | Build the container image                                                              |
+| `npm run up`                          | Start the container (auto-starts port bridge on Linux; skipped on macOS/Windows)       |
+| `npm run down`                        | Stop and remove the container (auto-stops port bridge on Linux)                        |
+| `npm run shell`                       | Open a shell inside the container                                                      |
+| `npm run bridge:start`                | Manually start host-side port bridge (Linux only; no-op on macOS/Windows)              |
+| `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                             |
+| `npm run bridge:status`               | Show whether host-side bridge relays are listening                                     |
 | `npm run bridge:doctor`               | End-to-end health check: Godot ports, host bridge, container-side relay, addon version |
-| `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                         |
-| `npm run claude:resume`               | Resume a previous Claude Code session                                            |
-| `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                            |
-| `npm run opencode`                    | Launch OpenCode TUI                                                              |
-| `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                              |
-| `npm run install-godot-addon`         | Install godot-mcp addon into the Godot project                                   |
+| `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                               |
+| `npm run claude:resume`               | Resume a previous Claude Code session                                                  |
+| `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                                  |
+| `npm run opencode`                    | Launch OpenCode TUI                                                                    |
+| `npm run opencode:prompt -- "prompt"` | Run a one-shot prompt with OpenCode                                                    |
+| `npm run install-godot-addon`         | Install godot-mcp addon into the Godot project                                         |
 
 > **Note:** `npm up` is a built-in npm alias for `npm update`. Always use `npm run up` (with `run`) to start the container.
 
@@ -285,6 +337,8 @@ Host Machine                          Container
 
 Docker Desktop resolves `host.docker.internal` to the host and can reach localhost-bound ports natively. No bridge needed.
 
+Ports shown are defaults — all four are overridable via `.env` (see [Running multiple instances in parallel](#running-multiple-instances-in-parallel)).
+
 ### Linux (Docker Engine)
 
 ```
@@ -312,6 +366,8 @@ Godot binds to `127.0.0.1`, but the container reaches the host via the Docker br
 Blender's addon binds `127.0.0.1:9876` the same way, so it needs the same host-side relay. It needs **no** container-side relay though: `blender-mcp` honours a `BLENDER_HOST` environment variable, so it is simply pointed at `host.docker.internal` directly. (`minimal-godot-mcp` hardcodes `127.0.0.1` in its LSP and DAP clients, which is why those two ports need the extra hop.)
 
 Ports 6006 and 9876 are treated as **optional** by `npm run bridge:doctor` — it reports them as `—` rather than failing, since the Debug Adapter and Blender are both commonly not running.
+
+Ports shown are defaults — all four are overridable via `.env` (see [Running multiple instances in parallel](#running-multiple-instances-in-parallel)).
 
 ### Common to all platforms
 
@@ -401,7 +457,7 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
    godot-mcp --install-addon /absolute/path/to/your/godot-project
    ```
    Re-run that command after any version bump — it is idempotent.
-3. *(Optional)* For Blender, install the pinned server and the vendored addon:
+3. _(Optional)_ For Blender, install the pinned server and the vendored addon:
    ```bash
    pip install blender-mcp==1.6.5
    ```
@@ -410,6 +466,7 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
 4. Register the MCP servers with your agent, pointing at `127.0.0.1` instead of `host.docker.internal`:
 
    **Claude Code:**
+
    ```bash
    claude mcp add godot-mcp -s user \
      -e GODOT_HOST=127.0.0.1 \
@@ -427,6 +484,7 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
    ```
 
    **OpenCode:** add the equivalent block to `opencode.json` in your Godot project root:
+
    ```json
    {
      "mcp": {
@@ -454,6 +512,7 @@ What you give up: the container's sandboxing/isolation, and the auto-installed a
      }
    }
    ```
+
 5. Start Godot (and Blender, if used), then launch your agent as usual (`claude` / `opencode`) from your project directory.
 
 ### Notes
@@ -496,6 +555,18 @@ If you get logged out **repeatedly — typically on the first session of the day
 also run Claude Code elsewhere under the **same Anthropic account**, that's the rotating
 refresh token being invalidated across clients, not lost credentials. Set a long-lived
 `CLAUDE_CODE_OAUTH_TOKEN` as described in [Staying logged in across days](#staying-logged-in-across-days-optional-long-lived-token).
+
+### `npm run up` suddenly acts like a brand new container
+
+If you have **both** Docker Desktop and a native Docker Engine installed on the same Linux machine, you have more than one `docker context`, and only one of them is "active" at a time for the plain `docker`/`devcontainer` CLI commands this project's npm scripts use. **Docker Desktop resets the active context to `desktop-linux` every time it starts**, even if you'd left it on something else — so simply opening the Docker Desktop app can silently redirect all subsequent `npm run` commands to a different, empty Docker engine. Symptoms: `npm run down` reports "No container found" even though one is clearly running elsewhere, and the next `npm run up` creates what looks like a totally fresh environment (re-login, theme picker, no history) — because it is one, just on a different engine, coincidentally reusing the same volume _names_ (they're computed from your project path alone) in a different, empty storage backend.
+
+Check which context is active with `docker context ls`, and check where your actual container lives with:
+
+```bash
+docker context ls | awk '{print $1}' | tail -n +3 | xargs -I{} sh -c 'echo "=== {} ==="; docker --context {} ps -a --filter label=devcontainer.local_folder=$(pwd)'
+```
+
+If it's on a different context than the active one, either switch your active context to match (`docker context use <name>`) or, to avoid this happening again after the next Docker Desktop launch, pin this project to the right context regardless of the global default by setting `DOCKER_CONTEXT=<name>` in `.env` — every npm script here already sources `.env` before running `docker`/`devcontainer`, so this takes effect automatically. Leave it unset if you've never seen this problem; it doesn't affect anyone with only one Docker context.
 
 ### Godot LSP connection refused
 
