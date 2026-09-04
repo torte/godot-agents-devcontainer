@@ -51,7 +51,11 @@
     "NODE_OPTIONS": "--max-old-space-size=4096",
     "CLAUDE_CONFIG_DIR": "/home/node/.claude",
     "CLAUDE_CODE_OAUTH_TOKEN": "${localEnv:CLAUDE_CODE_OAUTH_TOKEN}",
-    "POWERLEVEL9K_DISABLE_GITSTATUS": "true"
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
+    "GODOT_WS_PORT": "${localEnv:GODOT_WS_PORT:6550}",
+    "GODOT_LSP_PORT": "${localEnv:GODOT_LSP_PORT:6005}",
+    "GODOT_DAP_PORT": "${localEnv:GODOT_DAP_PORT:6006}",
+    "BLENDER_PORT": "${localEnv:BLENDER_PORT:9876}"
   },
   "workspaceMount": "source=${localEnv:GODOT_PROJECT_PATH},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",

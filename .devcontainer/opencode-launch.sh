@@ -9,9 +9,12 @@ USER_CONFIG="/home/node/.claude-user-config"
 CFG_DIR="/home/node/.config/opencode"
 mkdir -p "$CFG_DIR"
 
-cat > "$CFG_DIR/opencode.json" <<'EOF'
+# Unquoted heredoc: values below interpolate from the environment (set via
+# .env / containerEnv). Escape any literal $ or backtick added here so it
+# isn't mistaken for shell expansion.
+cat > "$CFG_DIR/opencode.json" <<EOF
 {
-  "$schema": "https://opencode.ai/config.json",
+  "\$schema": "https://opencode.ai/config.json",
   "permission": {
     "*": "allow"
   },
@@ -21,15 +24,15 @@ cat > "$CFG_DIR/opencode.json" <<'EOF'
       "command": ["npx", "-y", "@satelliteoflove/godot-mcp"],
       "environment": {
         "GODOT_HOST": "host.docker.internal",
-        "GODOT_PORT": "6550"
+        "GODOT_PORT": "${GODOT_WS_PORT:-6550}"
       }
     },
     "minimal-godot-mcp": {
       "type": "local",
       "command": ["npx", "-y", "@ryanmazzolini/minimal-godot-mcp"],
       "environment": {
-        "GODOT_LSP_PORT": "6005",
-        "GODOT_DAP_PORT": "6006",
+        "GODOT_LSP_PORT": "${GODOT_LSP_PORT:-6005}",
+        "GODOT_DAP_PORT": "${GODOT_DAP_PORT:-6006}",
         "GODOT_WORKSPACE_PATH": "/workspace"
       }
     },
@@ -38,7 +41,7 @@ cat > "$CFG_DIR/opencode.json" <<'EOF'
       "command": ["blender-mcp"],
       "environment": {
         "BLENDER_HOST": "host.docker.internal",
-        "BLENDER_PORT": "9876"
+        "BLENDER_PORT": "${BLENDER_PORT:-9876}"
       }
     }
   }

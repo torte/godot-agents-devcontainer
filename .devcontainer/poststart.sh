@@ -70,12 +70,12 @@ fi
 # --- Claude Code: Register MCP servers ---
 claude mcp add godot-mcp -s user \
   -e GODOT_HOST=host.docker.internal \
-  -e GODOT_PORT=6550 \
+  -e GODOT_PORT="${GODOT_WS_PORT:-6550}" \
   -- npx -y @satelliteoflove/godot-mcp
 
 claude mcp add minimal-godot-mcp -s user \
-  -e GODOT_LSP_PORT=6005 \
-  -e GODOT_DAP_PORT=6006 \
+  -e GODOT_LSP_PORT="${GODOT_LSP_PORT:-6005}" \
+  -e GODOT_DAP_PORT="${GODOT_DAP_PORT:-6006}" \
   -e GODOT_WORKSPACE_PATH=/workspace \
   -- npx -y @ryanmazzolini/minimal-godot-mcp
 
@@ -84,7 +84,7 @@ claude mcp add minimal-godot-mcp -s user \
 # container-side socat relay — only the host-side bridge on 9876.
 claude mcp add blender-mcp -s user \
   -e BLENDER_HOST=host.docker.internal \
-  -e BLENDER_PORT=9876 \
+  -e BLENDER_PORT="${BLENDER_PORT:-9876}" \
   -- blender-mcp
 
 # OpenCode MCP config is generated lazily by .devcontainer/opencode-launch.sh
@@ -97,7 +97,7 @@ claude mcp add blender-mcp -s user \
 # host.docker.internal. Each runs under a watchdog so a transient socat failure
 # self-heals.
 RELAY_LOG=/tmp/socat-godot.log
-RELAY_PORTS="6005 6006"
+RELAY_PORTS="${GODOT_LSP_PORT:-6005} ${GODOT_DAP_PORT:-6006}"
 
 # Wait for host.docker.internal to resolve (up to 5s)
 for i in $(seq 1 10); do

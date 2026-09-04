@@ -57,13 +57,17 @@ stop_bridge() {
     return 0
   fi
 
-  local pids
-  pids=$(pgrep -f "socat TCP-LISTEN:.*,bind=${gateway}" 2>/dev/null || true)
-  if [ -n "$pids" ]; then
-    echo "$pids" | xargs kill 2>/dev/null || true
-    echo "Stopped bridge processes"
+  local port pids all_pids=""
+  for port in "${BRIDGE_PORTS[@]}"; do
+    pids=$(pgrep -f "socat TCP-LISTEN:${port},bind=${gateway}" 2>/dev/null || true)
+    [ -n "$pids" ] && all_pids="${all_pids} ${pids}"
+  done
+
+  if [ -n "$all_pids" ]; then
+    echo "$all_pids" | xargs kill 2>/dev/null || true
+    echo "Stopped bridge processes for ports ${BRIDGE_PORTS[*]}"
   else
-    echo "No bridge processes running"
+    echo "No bridge processes running for ports ${BRIDGE_PORTS[*]}"
   fi
 }
 
@@ -89,7 +93,7 @@ start_bridge() {
 
   echo "Starting bridge on ${gateway} (ports ${BRIDGE_PORTS[*]})..."
 
-  local log=/tmp/godot-bridge.log
+  local log="/tmp/godot-bridge-${GODOT_WS_PORT}-${GODOT_LSP_PORT}-${GODOT_DAP_PORT}-${BLENDER_PORT}.log"
   : > "$log"
   for port in "${BRIDGE_PORTS[@]}"; do
     socat "TCP-LISTEN:${port},bind=${gateway},fork,reuseaddr" "TCP:127.0.0.1:${port}" >>"$log" 2>&1 &
