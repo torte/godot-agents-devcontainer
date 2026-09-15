@@ -5,9 +5,9 @@
   "scripts": {
     "build": "set -a && . ./.env 2>/dev/null; set +a; devcontainer build --workspace-folder .",
     "up": "set -a && . ./.env 2>/dev/null; set +a; CID=$(docker ps -aq -f label=devcontainer.local_folder=$(pwd)); [ -n \"$CID\" ] && { docker stop $CID >/dev/null 2>&1; docker rm $CID >/dev/null 2>&1; }; devcontainer up --workspace-folder . && ./scripts/bridge.sh start",
-    "claude": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . claude --dangerously-skip-permissions",
-    "claude:resume": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . claude --dangerously-skip-permissions --resume",
-    "claude:prompt": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . claude --dangerously-skip-permissions -p",
+    "claude": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . headroom wrap claude --no-proxy --code-memory none --no-mcp -- --dangerously-skip-permissions",
+    "claude:resume": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . headroom wrap claude --no-proxy --code-memory none --no-mcp -- --dangerously-skip-permissions --resume",
+    "claude:prompt": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . headroom wrap claude --no-proxy --code-memory none --no-mcp -- --dangerously-skip-permissions -p",
     "opencode": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . bash /home/node/.devcontainer/opencode-launch.sh",
     "opencode:prompt": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . bash /home/node/.devcontainer/opencode-launch.sh run",
     "down": "set -a && . ./.env 2>/dev/null; set +a; ./scripts/bridge.sh stop; CID=$(docker ps -aq -f label=devcontainer.local_folder=$(pwd)); [ -n \"$CID\" ] && { docker stop $CID >/dev/null 2>&1; docker rm $CID >/dev/null; } && echo 'Container removed' || echo 'No container found'",

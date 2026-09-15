@@ -47,8 +47,8 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 ENV DEVCONTAINER=true
 
 # Create workspace and config directories and set permissions
-RUN mkdir -p /workspace /home/node/.claude /home/node/.config/opencode && \
-  chown -R node:node /workspace /home/node/.claude /home/node/.config/opencode
+RUN mkdir -p /workspace /home/node/.claude /home/node/.config/opencode /home/node/.headroom && \
+  chown -R node:node /workspace /home/node/.claude /home/node/.config /home/node/.headroom
 
 WORKDIR /workspace
 
@@ -83,6 +83,31 @@ ENV PATH=/home/node/.local/bin:/home/node/.opencode/bin:$PATH:/usr/local/share/n
 # self-updaters can write to $HOME and keep the binaries current.
 RUN curl -fsSL https://claude.ai/install.sh | bash \
   && curl -fsSL https://opencode.ai/install | bash
+
+# Headroom: local compression proxy wrapping Claude Code and OpenCode (see
+# opencode-launch.sh and package.json's claude* scripts). Beacon (anonymous
+# usage reporting) is disabled — no telemetry leaves the container.
+# >=0.36.0 is a hard floor: earlier releases break streaming responses against
+# recent Claude Code versions (headroom-ai/headroom#3017, fixed in #3091/#3094).
+# [proxy,code] (not [all]/[ml]): the Kompress text compressor auto-picks its
+# lightweight ONNX Runtime backend from [proxy] (no torch needed); [ml] would
+# additionally drag in full PyTorch + CUDA/triton (multi-GB) for a backend we
+# don't use. [code] adds tree-sitter-based AST-aware code compression.
+ENV HEADROOM_BEACON=off
+# uv's tool venvs (UV_TOOL_DIR) and managed Python interpreters
+# (UV_PYTHON_INSTALL_DIR) both default under $HOME/.local, which is shadowed
+# at runtime by the persisted godot-agents-local volume (kept around so
+# Claude/OpenCode's own auto-updaters survive rebuilds) — a rebuilt image's
+# new/updated files there would never be seen by an existing
+# container. Redirect the whole tree, plus the shim dir, to /usr/local/share,
+# which is already on PATH and isn't volume-backed.
+ENV UV_TOOL_DIR=/usr/local/share/uv-tools
+ENV UV_PYTHON_INSTALL_DIR=/usr/local/share/uv-python
+ENV UV_TOOL_BIN_DIR=/usr/local/share/npm-global/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+  && uv tool install --python 3.13 "headroom-ai[proxy,code]>=0.36.0" \
+  && uv tool run --from "headroom-ai[proxy,code]" python3 -c \
+    "from headroom.transforms.kompress_compressor import KompressCompressor; KompressCompressor().compress('warm the model cache. ' * 500)"
 
 # Set the default shell to zsh rather than sh
 ENV SHELL=/bin/zsh

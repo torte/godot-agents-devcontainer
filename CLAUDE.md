@@ -100,6 +100,14 @@ rotating refresh token is invalidated by whichever client refreshed most recentl
 To avoid this, set an optional long-lived token (`CLAUDE_CODE_OAUTH_TOKEN`) in `.env`
 — see README "Staying logged in across days". Leave it unset to keep normal login.
 
+## Context Compression
+
+Claude Code and OpenCode invocations are routed through
+[Headroom](https://github.com/headroomlabs-ai/headroom), a local compression
+proxy that shrinks tool output/logs before they reach the model. Its usage
+beacon is disabled (`HEADROOM_BEACON=off`). Run `headroom doctor` inside the
+container to check its status and savings.
+
 ## Prerequisites
 
 For the MCP servers to work, the host machine must have:

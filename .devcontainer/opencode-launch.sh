@@ -50,4 +50,4 @@ EOF
 
 [ -f "$USER_CONFIG/AGENTS.md" ] && ln -sf "$USER_CONFIG/AGENTS.md" "$CFG_DIR/AGENTS.md"
 
-exec opencode "$@"
+exec headroom wrap opencode --no-proxy --no-serena --no-mcp -- "$@"

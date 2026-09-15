@@ -14,6 +14,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **[blender-mcp](https://github.com/ahujasid/blender-mcp)** — Drives a Blender session running on your host (22 tools): scene and object inspection, viewport screenshots, arbitrary Python against the scene, and asset sourcing from Poly Haven, Sketchfab, Hyper3D Rodin and Hunyuan3D. Blender stays on the host — only the small Python client is in the container
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
+- **[Headroom](https://github.com/headroomlabs-ai/headroom)** — Local compression proxy wrapping Claude Code and OpenCode by default, reducing token usage without sending anything off-machine (usage beacon disabled)
 
 ## What's NOT included
 
@@ -438,6 +439,25 @@ To change the default model, create or edit `opencode.json` in your Godot projec
 ```
 
 See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the full list of supported providers and models.
+
+## Context Compression (Headroom)
+
+[Headroom](https://github.com/headroomlabs-ai/headroom) is a local compression
+proxy that wraps both `npm run claude*` and `npm run opencode*` by default,
+shrinking tool output, logs, and other context before it reaches the model —
+compression happens locally, on the container, nothing extra is sent
+off-machine. Its anonymous usage beacon is disabled (`HEADROOM_BEACON=off`).
+
+A shared proxy starts once per container start (`poststart.sh`) so Claude
+Code and OpenCode can both be used concurrently. Run `headroom doctor` inside
+the container to check its status and savings.
+
+To bypass Headroom for a one-off debugging session, run the underlying tool
+directly instead of through the npm script, e.g.:
+
+```bash
+devcontainer exec --workspace-folder . claude --dangerously-skip-permissions
+```
 
 ## Running Without the Devcontainer
 

@@ -67,6 +67,47 @@ if [ -f /workspace/project.godot ] && [ -d "$VENDORED_ADDONS" ]; then
   [ -n "$vendored_synced" ] && echo "[devcontainer] Vendored addons synced:${vendored_synced}"
 fi
 
+# --- Headroom: start persistent compression proxy ---
+# Shared by Claude Code and OpenCode (see opencode-launch.sh and package.json's
+# claude* scripts), so it needs to be up before either tool launches. Runs
+# under the same restart-on-exit watchdog pattern as the Godot relays below.
+HEADROOM_LOG=/tmp/headroom-proxy.log
+HEADROOM_TAG="headroom-proxy-watchdog"
+
+pkill -f "$HEADROOM_TAG" 2>/dev/null || true
+pkill -f "headroom proxy" 2>/dev/null || true
+sleep 0.3
+
+nohup bash -c '
+  echo "[$(date)] $0 starting"
+  while true; do
+    # --no-ccr: both wrap invocations below use --no-mcp (no headroom MCP
+    # tools registered), so a reversible compression marker would have no
+    # tool to resolve it through ("unactionable", per headroom wrap --help).
+    # --no-ccr disables the marker mechanism entirely instead.
+    headroom proxy --host 127.0.0.1 --port 8787 --no-ccr
+    rc=$?
+    echo "[$(date)] headroom proxy exited with rc=$rc, restarting in 2s..."
+    sleep 2
+  done
+' "$HEADROOM_TAG" >> "$HEADROOM_LOG" 2>&1 &
+
+headroom_ready=false
+for i in $(seq 1 20); do
+  if curl -fsS "http://127.0.0.1:8787/health" >/dev/null 2>&1; then
+    headroom_ready=true
+    break
+  fi
+  sleep 0.5
+done
+
+if $headroom_ready; then
+  echo "[devcontainer] Headroom proxy listening on 127.0.0.1:8787"
+else
+  echo "[devcontainer] WARNING: Headroom proxy did not become ready within 10s. Tail of $HEADROOM_LOG:" >&2
+  tail -10 "$HEADROOM_LOG" >&2 || true
+fi
+
 # --- Claude Code: Register MCP servers ---
 claude mcp add godot-mcp -s user \
   -e GODOT_HOST=host.docker.internal \
