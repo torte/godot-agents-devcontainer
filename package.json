@@ -15,6 +15,7 @@
     "bridge:stop": "set -a && . ./.env 2>/dev/null; set +a; ./scripts/bridge.sh stop",
     "bridge:status": "set -a && . ./.env 2>/dev/null; set +a; ./scripts/bridge.sh status",
     "bridge:doctor": "set -a && . ./.env 2>/dev/null; set +a; ./scripts/bridge.sh doctor",
+    "doctor:render": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . bash /home/node/.devcontainer/render-doctor/run.sh",
     "shell": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . zsh",
     "install-godot-addon": "set -a && . ./.env 2>/dev/null; set +a; devcontainer exec --workspace-folder . npx @satelliteoflove/godot-mcp --install-addon /workspace"
   },

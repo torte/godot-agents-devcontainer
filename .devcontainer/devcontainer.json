@@ -6,10 +6,14 @@
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
       "GIT_DELTA_VERSION": "0.18.2",
       "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.7.2}",
+      "VARIANT": "${localEnv:DEVCONTAINER_VARIANT:basic}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
-  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway",
+    "--device=${localEnv:RENDER_DEVICE:/dev/null}"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

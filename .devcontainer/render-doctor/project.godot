@@ -1,0 +1,19 @@
+; Tiny project used by `npm run doctor:render` to prove the container can draw
+; a real frame. Independent of the user's project in /workspace.
+
+config_version=5
+
+[application]
+
+config/name="render-doctor"
+run/main_scene="res://doctor.tscn"
+
+[display]
+
+window/size/viewport_width=960
+window/size/viewport_height=540
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

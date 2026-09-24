@@ -70,6 +70,7 @@ RUN wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERS
 COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
 COPY --chown=node:node opencode-launch.sh /home/node/.devcontainer/opencode-launch.sh
 COPY --chown=node:node addons /home/node/.devcontainer/addons
+COPY --chown=node:node render-doctor /home/node/.devcontainer/render-doctor
 RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh
 
 # Set up non-root user
@@ -136,3 +137,23 @@ RUN npm install -g \
   @gltf-transform/cli \
   obj2gltf \
   fbx2gltf
+
+# Extended variant: rendering under Xvfb with Mesa (llvmpipe, or the host GPU
+# when RENDER_DEVICE passes /dev/dri in). Lets Godot draw real frames for
+# screenshots and videos without a host display. See `npm run doctor:render`.
+# Last, so switching variants reuses every layer above from cache.
+USER root
+ARG VARIANT=basic
+ENV DEVCONTAINER_VARIANT=$VARIANT
+RUN if [ "$VARIANT" = "extended" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends \
+      xvfb \
+      xauth \
+      libgl1-mesa-dri \
+      libgl1 \
+      libegl1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*; \
+  elif [ "$VARIANT" != "basic" ]; then \
+    echo "Unknown VARIANT '$VARIANT' (expected basic or extended)" >&2; exit 1; \
+  fi
+USER node
