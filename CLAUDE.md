@@ -208,10 +208,17 @@ installed tool; read it for starting points.
 
 ## Godot Headless CLI
 
-`godot` is available system-wide. Always use `--headless` (no display server in container).
+`godot` is available system-wide. Use `--headless` unless you need pixels.
 - Run GDScript: `godot --headless --path /workspace -s res://script.gd`
 - Export project: `godot --headless --path /workspace --export-release "preset" output_path`
 - Validate project: `godot --headless --path /workspace --check-only`
+
+**Drawing real frames** works only in the extended image variant
+(`echo $DEVCONTAINER_VARIANT`; `command -v xvfb-run`). There, run Godot under Xvfb
+with the Compatibility renderer:
+`xvfb-run -a godot --path /workspace --display-driver x11 --rendering-driver opengl3 --audio-driver Dummy ...`
+(screenshots via `get_viewport().get_texture().get_image()`, videos via
+`--write-movie`). It usually renders on the CPU (llvmpipe): correct but slow.
 
 ## File Editing Guidelines
 

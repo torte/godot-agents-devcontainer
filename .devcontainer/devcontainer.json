@@ -9,10 +9,14 @@
       "HEADROOM": "${localEnv:HEADROOM:off}",
       "AUDIO": "${localEnv:AUDIO:off}",
       "AUDIO_MUSIC": "${localEnv:AUDIO_MUSIC:off}",
+      "VARIANT": "${localEnv:DEVCONTAINER_VARIANT:basic}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
-  "runArgs": ["--add-host=host.docker.internal:host-gateway"],
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway",
+    "--device=${localEnv:RENDER_DEVICE:/dev/null}"
+  ],
   "customizations": {
     "vscode": {
       "extensions": [

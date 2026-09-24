@@ -13,6 +13,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **`auto_reload` addon** — reloads the open scene and its scripts within ~1s of an external change, so files written from inside the container show up in the editor without a manual reload ([vendored from GoPeak](https://github.com/HaD0Yun/Doyunha-Gopeak), MIT)
 - **[blender-mcp](https://github.com/ahujasid/blender-mcp)** — Drives a Blender session running on your host (22 tools): scene and object inspection, viewport screenshots, arbitrary Python against the scene, and asset sourcing from Poly Haven, Sketchfab, Hyper3D Rodin and Hunyuan3D. Blender stays on the host — only the small Python client is in the container
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
+- **Optional rendering variant** — Xvfb and Mesa, so Godot can draw real frames for screenshots and videos without a host display. See [Rendering in the container](#rendering-in-the-container-extended-variant)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
 - **Audio tools** _(optional, off by default)_ — Procedural sound effects (numpy/scipy, pedalboard, pyo, jsfxr) and MIDI music rendering (FluidSynth with two General MIDI soundfonts), see [Optional: audio tools](#optional-audio-tools)
 - **[Headroom](https://github.com/headroomlabs-ai/headroom)** _(optional, off by default)_ — Local compression proxy wrapping Claude Code and OpenCode, reducing token usage without sending anything off-machine (usage beacon disabled)
@@ -61,6 +62,11 @@ CLAUDE_USER_CONFIG_DIR=$HOME/.claude
 
 # Optional: Godot headless CLI version (default: 4.7.2)
 # GODOT_VERSION=4.7.2
+
+# Optional: image variant, basic (default) or extended (adds rendering).
+# See "Rendering in the container" below.
+# DEVCONTAINER_VARIANT=basic
+# RENDER_DEVICE=/dev/dri
 
 # Optional: long-lived Claude Code token so the container stays logged in
 # (only needed if you also use the same Anthropic account elsewhere).
@@ -304,6 +310,7 @@ You can work on several Godot games at once, each in its own devcontainer instan
 | `npm run bridge:stop`                 | Manually stop the port bridge (Linux only)                                             |
 | `npm run bridge:status`               | Show whether host-side bridge relays are listening                                     |
 | `npm run bridge:doctor`               | End-to-end health check: Godot ports, host bridge, container-side relay, addon version |
+| `npm run doctor:render`               | Render a test frame under Xvfb and report which device drew it (extended variant)      |
 | `npm run claude`                      | Launch Claude Code with `--dangerously-skip-permissions`                               |
 | `npm run claude:resume`               | Resume a previous Claude Code session                                                  |
 | `npm run claude:prompt -- "prompt"`   | Run a one-shot prompt                                                                  |
@@ -435,7 +442,74 @@ The container includes the Godot engine binary (v4.7.2 by default), usable via `
 
 The version can be changed by setting `GODOT_VERSION` in your `.env` file before building the container.
 
-> **Note**: There is no display server in the container — always use `--headless`. The Godot editor runs on your host machine.
+> **Note**: The basic image has no display server, so always use `--headless` there. The Godot editor runs on your host machine. To draw real frames in the container, use the extended variant below.
+
+## Rendering in the container (extended variant)
+
+`--headless` runs scripts and tests but never draws pixels. For screenshots and
+videos from scripts (CI, automated playtests, capture), build the **extended**
+variant, which adds Xvfb (a virtual X display) and Mesa's OpenGL drivers:
+
+```bash
+# .env
+DEVCONTAINER_VARIANT=extended   # basic (default) or extended; one or the other
+# RENDER_DEVICE=/dev/dri        # optional, Linux: pass the host GPU in
+```
+
+Then `npm run build && npm run up`, and check it:
+
+```bash
+npm run doctor:render
+# Device:  ... Using Device: Mesa/X.org - llvmpipe (LLVM ...)
+# OK: real frame drawn, saved to /tmp/render-doctor/frame.png
+```
+
+The doctor renders a tiny built-in scene, independent of your project, and fails
+if the frame is blank or the engine logs an error. On the basic variant it fails
+with a hint to switch.
+
+Run your own scenes the same way. Godot needs the Compatibility renderer
+(`gl_compatibility`); Forward+ and Mobile need Vulkan, which this setup does not
+provide:
+
+```bash
+xvfb-run -a -s "-screen 0 1920x1080x24" godot --path /workspace \
+  --display-driver x11 --rendering-driver opengl3 --audio-driver Dummy \
+  --write-movie /tmp/clip.avi --fixed-fps 60 --quit-after 300 res://main.tscn
+```
+
+`--write-movie` (Godot's Movie Maker) advances the game one fixed step per
+recorded frame however slowly it draws, so slow rendering makes a capture take
+longer but never changes what it shows. It records at the project's viewport
+size (**Display > Window > Size**) and ignores `--resolution`; scale the result
+with `ffmpeg -vf scale=-2:540` if you want it smaller.
+
+**About the GPU.** `RENDER_DEVICE=/dev/dri` passes the host GPU into the
+container; unset, a harmless `/dev/null` is passed instead. Under Xvfb, though,
+Mesa usually still draws on the CPU (llvmpipe), because Xvfb offers no direct
+path to the GPU. The doctor prints which device drew. llvmpipe produces the same
+images, only more slowly, which is fine for captures but useless for measuring
+frame rates. If your host's render nodes are not world-accessible
+(`ls -l /dev/dri`), the container user also needs the host's `render` group.
+
+## Scripting the container
+
+Everything the npm scripts do can be driven from your own scripts or CI, from the
+host, in this repo's directory:
+
+| What | Command |
+| --- | --- |
+| Start the container | `npm run up` |
+| Run a command inside | `npx devcontainer exec --workspace-folder . <command>` |
+| One-shot agent prompt | `npm run claude:prompt -- "<prompt>" <extra claude flags>` |
+| Headless Godot | `... exec ... godot --headless --path /workspace -s res://script.gd` |
+| Render or capture (extended) | `... exec ... xvfb-run -a godot --path /workspace --display-driver x11 --rendering-driver opengl3 ...` |
+
+Your project is at `/workspace` inside the container, a bind mount of
+`GODOT_PROJECT_PATH`, so files written on either side are visible on the other
+immediately. Exit codes pass through `devcontainer exec`, so a script can branch
+on them. Tools on the `PATH`: `godot`, `xvfb-run` (extended), `ffmpeg`,
+ImageMagick, `python3`, `gltf-transform`.
 
 ## Using OpenCode
 

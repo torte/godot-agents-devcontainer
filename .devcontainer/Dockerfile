@@ -73,7 +73,9 @@ COPY --chown=node:node claude-launch.sh /home/node/.devcontainer/claude-launch.s
 COPY --chown=node:node headroom-enabled.sh /home/node/.devcontainer/headroom-enabled.sh
 COPY --chown=node:node audio-smoke.sh /home/node/.devcontainer/audio-smoke.sh
 COPY --chown=node:node addons /home/node/.devcontainer/addons
+COPY --chown=node:node render-doctor /home/node/.devcontainer/render-doctor
 RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh /home/node/.devcontainer/claude-launch.sh /home/node/.devcontainer/audio-smoke.sh
+RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh
 
 # Set up non-root user
 USER node
@@ -178,4 +180,24 @@ RUN case "$(echo "$AUDIO_MUSIC" | tr '[:upper:]' '[:lower:]')" in \
     off|"") echo "Audio music tools disabled (AUDIO_MUSIC=off), skipping install" ;; \
     *) echo "Unknown AUDIO_MUSIC '$AUDIO_MUSIC' (expected on or off)" >&2; exit 1 ;; \
   esac
+
+# Extended variant: rendering under Xvfb with Mesa (llvmpipe, or the host GPU
+# when RENDER_DEVICE passes /dev/dri in). Lets Godot draw real frames for
+# screenshots and videos without a host display. See `npm run doctor:render`.
+# Last, so switching variants reuses every layer above from cache.
+USER root
+ARG VARIANT=basic
+ENV DEVCONTAINER_VARIANT=$VARIANT
+RUN if [ "$VARIANT" = "extended" ]; then \
+    apt-get update && apt-get install -y --no-install-recommends \
+      xvfb \
+      xauth \
+      libgl1-mesa-dri \
+      libgl1 \
+      libegl1 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*; \
+  elif [ "$VARIANT" != "basic" ]; then \
+    echo "Unknown VARIANT '$VARIANT' (expected basic or extended)" >&2; exit 1; \
+  fi
+
 USER node
