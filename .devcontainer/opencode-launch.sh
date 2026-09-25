@@ -50,4 +50,9 @@ EOF
 
 [ -f "$USER_CONFIG/AGENTS.md" ] && ln -sf "$USER_CONFIG/AGENTS.md" "$CFG_DIR/AGENTS.md"
 
-exec headroom wrap opencode --no-proxy --no-serena --no-mcp -- "$@"
+. /home/node/.devcontainer/headroom-enabled.sh
+
+if headroom_enabled; then
+  exec headroom wrap opencode --no-proxy --no-serena --no-mcp -- "$@"
+fi
+exec opencode "$@"

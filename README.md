@@ -14,7 +14,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **[blender-mcp](https://github.com/ahujasid/blender-mcp)** — Drives a Blender session running on your host (22 tools): scene and object inspection, viewport screenshots, arbitrary Python against the scene, and asset sourcing from Poly Haven, Sketchfab, Hyper3D Rodin and Hunyuan3D. Blender stays on the host — only the small Python client is in the container
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
-- **[Headroom](https://github.com/headroomlabs-ai/headroom)** — Local compression proxy wrapping Claude Code and OpenCode by default, reducing token usage without sending anything off-machine (usage beacon disabled)
+- **[Headroom](https://github.com/headroomlabs-ai/headroom)** _(optional, off by default)_ — Local compression proxy wrapping Claude Code and OpenCode, reducing token usage without sending anything off-machine (usage beacon disabled)
 
 ## What's NOT included
 
@@ -442,18 +442,39 @@ See the [OpenCode documentation](https://opencode.ai/docs/providers/) for the fu
 
 ## Context Compression (Headroom)
 
-[Headroom](https://github.com/headroomlabs-ai/headroom) is a local compression
-proxy that wraps both `npm run claude*` and `npm run opencode*` by default,
-shrinking tool output, logs, and other context before it reaches the model —
-compression happens locally, on the container, nothing extra is sent
-off-machine. Its anonymous usage beacon is disabled (`HEADROOM_BEACON=off`).
+[Headroom](https://github.com/headroomlabs-ai/headroom) is an optional local
+compression proxy. When enabled it wraps both `npm run claude*` and
+`npm run opencode*`, shrinking tool output, logs, and other context before it
+reaches the model — compression happens locally, on the container, nothing
+extra is sent off-machine. Its anonymous usage beacon is disabled
+(`HEADROOM_BEACON=off`).
 
-A shared proxy starts once per container start (`poststart.sh`) so Claude
-Code and OpenCode can both be used concurrently. Run `headroom doctor` inside
-the container to check its status and savings.
+It is **off by default**, because it adds noticeable disk space to the image
+(uv, a Python interpreter, an ONNX model) and runs a proxy in the background.
+To enable it, set this in `.env` and rebuild:
 
-To bypass Headroom for a one-off debugging session, run the underlying tool
-directly instead of through the npm script, e.g.:
+```bash
+HEADROOM=on
+```
+
+```bash
+npm run build && npm run up
+```
+
+The same switch controls both the install (build time) and its use (run time),
+so changing it always needs a rebuild. Setting `HEADROOM=off` on an image built
+with it on skips the proxy and the wrap; setting `HEADROOM=on` on an image built
+without it prints a warning and runs the tools plain.
+
+> **Upgrading from an earlier version:** Headroom used to be always on. Add
+> `HEADROOM=on` to `.env` before your next rebuild to keep it.
+
+When enabled, a shared proxy starts once per container start (`poststart.sh`)
+so Claude Code and OpenCode can both be used concurrently. Run
+`headroom doctor` inside the container to check its status and savings.
+
+To bypass an enabled Headroom for a one-off debugging session, run the
+underlying tool directly instead of through the npm script, e.g.:
 
 ```bash
 devcontainer exec --workspace-folder . claude --dangerously-skip-permissions

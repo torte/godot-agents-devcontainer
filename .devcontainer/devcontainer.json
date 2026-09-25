@@ -6,6 +6,7 @@
       "TZ": "${localEnv:TZ:America/Los_Angeles}",
       "GIT_DELTA_VERSION": "0.18.2",
       "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.7.2}",
+      "HEADROOM": "${localEnv:HEADROOM:off}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
@@ -57,6 +58,7 @@
     "GODOT_LSP_PORT": "${localEnv:GODOT_LSP_PORT:6005}",
     "GODOT_DAP_PORT": "${localEnv:GODOT_DAP_PORT:6006}",
     "BLENDER_PORT": "${localEnv:BLENDER_PORT:9876}",
+    "HEADROOM": "${localEnv:HEADROOM:off}",
     "HEADROOM_BEACON": "off"
   },
   "workspaceMount": "source=${localEnv:GODOT_PROJECT_PATH},target=/workspace,type=bind,consistency=delegated",

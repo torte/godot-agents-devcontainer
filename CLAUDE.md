@@ -102,11 +102,13 @@ To avoid this, set an optional long-lived token (`CLAUDE_CODE_OAUTH_TOKEN`) in `
 
 ## Context Compression
 
-Claude Code and OpenCode invocations are routed through
+When `HEADROOM=on` is set in `.env` (default off), Claude Code and OpenCode
+invocations are routed through
 [Headroom](https://github.com/headroomlabs-ai/headroom), a local compression
 proxy that shrinks tool output/logs before they reach the model. Its usage
 beacon is disabled (`HEADROOM_BEACON=off`). Run `headroom doctor` inside the
-container to check its status and savings.
+container to check its status and savings. Check `echo $HEADROOM` to see if it
+is active.
 
 ## Prerequisites
 
