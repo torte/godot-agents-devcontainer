@@ -1,14 +1,12 @@
 #!/bin/bash
 # Proves the container can draw a real frame: renders the tiny project next to
-# this script under Xvfb and checks the result. Run inside the container, or
-# from the host with `npm run doctor:render`.
+# this script through `godot-render` and checks the result. Run inside the
+# container, or from the host with `npm run doctor:render [-- opengl|vulkan]`.
+# Tests RENDER_DEFAULT unless a pathway is given.
 set -uo pipefail
 
-if ! command -v xvfb-run >/dev/null; then
-  echo "FAIL: this is the basic variant (DEVCONTAINER_VARIANT=${DEVCONTAINER_VARIANT:-basic}), which cannot render."
-  echo "      Set DEVCONTAINER_VARIANT=extended in .env, then: npm run build && npm run up"
-  exit 1
-fi
+export RENDER_DEFAULT="${1:-${RENDER_DEFAULT:-opengl}}"
+echo "Pathway: $RENDER_DEFAULT"
 
 work=/tmp/render-doctor
 rm -rf "$work" && mkdir -p "$work"
@@ -22,9 +20,7 @@ else
 fi
 
 start=$(date +%s%N)
-log=$(xvfb-run -a -s "-screen 0 960x540x24" \
-  godot --path "$work" --display-driver x11 --rendering-driver opengl3 --audio-driver Dummy \
-  --resolution 960x540 -- --out="$frame" 2>&1)
+log=$(godot-render --path "$work" --resolution 960x540 -- --out="$frame" 2>&1)
 rc=$?
 ms=$(( ($(date +%s%N) - start) / 1000000 ))
 

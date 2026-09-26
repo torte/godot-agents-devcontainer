@@ -9,7 +9,8 @@
       "HEADROOM": "${localEnv:HEADROOM:off}",
       "AUDIO": "${localEnv:AUDIO:off}",
       "AUDIO_MUSIC": "${localEnv:AUDIO_MUSIC:off}",
-      "VARIANT": "${localEnv:DEVCONTAINER_VARIANT:basic}",
+      "RENDER_OPENGL": "${localEnv:RENDER_OPENGL:off}",
+      "RENDER_VULKAN": "${localEnv:RENDER_VULKAN:off}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },
@@ -65,7 +66,8 @@
     "GODOT_DAP_PORT": "${localEnv:GODOT_DAP_PORT:6006}",
     "BLENDER_PORT": "${localEnv:BLENDER_PORT:9876}",
     "HEADROOM": "${localEnv:HEADROOM:off}",
-    "HEADROOM_BEACON": "off"
+    "HEADROOM_BEACON": "off",
+    "RENDER_DEFAULT": "${localEnv:RENDER_DEFAULT:opengl}"
   },
   "workspaceMount": "source=${localEnv:GODOT_PROJECT_PATH},target=/workspace,type=bind,consistency=delegated",
   "workspaceFolder": "/workspace",
