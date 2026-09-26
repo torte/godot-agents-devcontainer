@@ -66,7 +66,7 @@ fs.writeFileSync(process.argv[2], Buffer.from(sfxr.toWave(params).wav));
 EOF
   then pass "jsfxr preset -> WAV"; else fail "jsfxr preset -> WAV"; fi
 
-  # Same recipe as documented in CLAUDE.md. ffmpeg's showspectrumpic is not
+  # Same recipe as documented in AGENTS.md. ffmpeg's showspectrumpic is not
   # used: it ties the FFT window to image width, so short SFX smear into noise.
   if python3 - "$OUT/laser.wav" "$OUT/laser.png" <<'EOF' && [ -s "$OUT/laser.png" ]
 import sys, numpy as np, soundfile as sf
