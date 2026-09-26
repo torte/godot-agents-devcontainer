@@ -146,6 +146,66 @@ The container includes tools for programmatic asset creation:
 - **3D**: `python3` with trimesh for procedural mesh generation (export to glTF/OBJ/STL); `gltf-transform` for optimizing/compressing glTF; `obj2gltf` and `fbx2gltf` for format conversion
 - **Audio**: `ffmpeg` for format conversion and simple sound effect generation (sine waves, noise, filters)
 
+### Audio (optional)
+
+Two build switches add procedural audio tooling; both default to off, so check
+before relying on them:
+
+- `AUDIO=on` (check: `python3 -c "import pedalboard"`): numpy/scipy for
+  synthesis, `soundfile` for WAV I/O, `pedalboard` for effects (Reverb, Delay,
+  LowpassFilter, Compressor, Distortion, Chorus, ...), `pyloudnorm` for
+  loudness, `librosa` for analysis, `pyo` for ready-made oscillators/envelopes
+  (offline: `Server(audio="offline")` + `recordOptions`; keep every pyo object
+  in a variable, unreferenced ones are garbage-collected and render silence), and `jsfxr` for retro
+  sfxr presets (pickupCoin, laserShoot, explosion, powerUp, hitHurt, jump,
+  blipSelect).
+- `AUDIO_MUSIC=on` (check: `ls /usr/share/sounds/sf2`): write MIDI with `mido`,
+  render with `fluidsynth -ni -q -F out.wav -r 44100 <font.sf2> song.mid`.
+  Two General MIDI fonts: `FluidR3_GM.sf2` and `GeneralUser-GS.sf2` (usually
+  the better sounding one). Render the same MIDI with both to let the user
+  compare, or render parts with different fonts and mix them in Python.
+
+`bash ~/.devcontainer/audio-smoke.sh` renders a working example with every
+installed tool; read it for starting points.
+
+**Conventions:**
+- SFX: WAV, 16-bit PCM, 44.1 kHz, mono, peak normalized to -1 dBFS, no
+  leading silence (Godot plays it on trigger) and a short fade-out instead of a
+  hard cut.
+- Music: OGG Vorbis (`ffmpeg -i in.wav -c:a libvorbis -q:a 5 out.ogg`), around
+  -16 LUFS integrated. For loops, render whole bars and let the reverb tail wrap
+  around to the start so the loop point does not click; enable loop in the
+  Godot import settings.
+- No MP3. Put files in the project's existing audio folder, else
+  `res://audio/sfx` and `res://audio/music`.
+- Keep the generator script next to the output (e.g. `laser.py` beside
+  `laser.wav`) so a sound can be regenerated, tweaked or varied later.
+- jsfxr from node: `sfxr.generate("laserShoot")`, set `sample_size = 16`, then
+  write `Buffer.from(sfxr.toWave(params).wav)`. Its `sfxr-to-wav` CLI defaults
+  to 8-bit. Global npm modules need `NODE_PATH="$(npm root -g)"`.
+
+**You cannot hear the result.** Check it instead of guessing:
+- Spectrogram to view (time left to right, 0 Hz at the bottom up to sr/2,
+  linear; brightness covers the top 80 dB). Shows pitch sweeps, harmonics,
+  noise, aliasing, clicks and tail length. Don't use ffmpeg's
+  `showspectrumpic` for short SFX: its FFT window shrinks with clip length and
+  everything smears into noise.
+  ```python
+  import sys, numpy as np, soundfile as sf
+  from scipy.signal import stft
+  from PIL import Image
+  x, sr = sf.read(sys.argv[1], always_2d=True)
+  f, t, Z = stft(x.mean(axis=1), sr, nperseg=1024, noverlap=1024 - 128)
+  db = 20 * np.log10(np.abs(Z) + 1e-9)
+  db = np.clip((db - db.max() + 80) / 80, 0, 1)
+  Image.fromarray((db[::-1] * 255).astype(np.uint8)).resize((800, 400)).save(sys.argv[2])
+  ```
+- Waveform (envelope, clipping, silence):
+  `ffmpeg -i s.wav -lavfi showwavespic=s=800x200 w.png`.
+- Numbers: duration, peak, LUFS (`pyloudnorm`), leading/trailing silence.
+- Then ask the user to listen, and iterate on their feedback. Offering 2-3
+  variations at once makes that faster.
+
 ## Godot Headless CLI
 
 `godot` is available system-wide. Always use `--headless` (no display server in container).

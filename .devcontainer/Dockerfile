@@ -71,8 +71,9 @@ COPY --chown=node:node poststart.sh /home/node/.devcontainer/poststart.sh
 COPY --chown=node:node opencode-launch.sh /home/node/.devcontainer/opencode-launch.sh
 COPY --chown=node:node claude-launch.sh /home/node/.devcontainer/claude-launch.sh
 COPY --chown=node:node headroom-enabled.sh /home/node/.devcontainer/headroom-enabled.sh
+COPY --chown=node:node audio-smoke.sh /home/node/.devcontainer/audio-smoke.sh
 COPY --chown=node:node addons /home/node/.devcontainer/addons
-RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh /home/node/.devcontainer/claude-launch.sh
+RUN chmod +x /home/node/.devcontainer/poststart.sh /home/node/.devcontainer/opencode-launch.sh /home/node/.devcontainer/claude-launch.sh /home/node/.devcontainer/audio-smoke.sh
 
 # Set up non-root user
 USER node
@@ -146,3 +147,35 @@ RUN npm install -g \
   @gltf-transform/cli \
   obj2gltf \
   fbx2gltf
+
+# Optional audio tooling for procedural SFX and music (see README "Optional:
+# audio tools"), both off by default and declared last so toggling them keeps
+# every earlier layer cached. Two independent gates:
+# - AUDIO=on: SFX stack. scipy/soundfile for DSP and I/O, pedalboard (Spotify,
+#   JUCE effects), pyloudnorm, librosa for analysis, pyo (from apt: PyPI has
+#   no Linux wheel for this Python) and jsfxr for retro sfxr presets.
+# - AUDIO_MUSIC=on: MIDI rendering. mido, fluidsynth and two General MIDI
+#   soundfonts: FluidR3_GM (apt) and GeneralUser GS, pinned to a commit since
+#   the project publishes no releases.
+USER root
+ARG AUDIO=off
+RUN case "$(echo "$AUDIO" | tr '[:upper:]' '[:lower:]')" in \
+    on) apt-get update && apt-get install -y --no-install-recommends python3-pyo \
+      && apt-get clean && rm -rf /var/lib/apt/lists/* \
+      && pip3 install --break-system-packages scipy soundfile pedalboard pyloudnorm librosa \
+      && su node -c "npm install -g jsfxr" ;; \
+    off|"") echo "Audio SFX tools disabled (AUDIO=off), skipping install" ;; \
+    *) echo "Unknown AUDIO '$AUDIO' (expected on or off)" >&2; exit 1 ;; \
+  esac
+ARG AUDIO_MUSIC=off
+ARG GENERALUSER_GS_COMMIT=684543d5e5efaef08d02be50dcda8d552478fa60
+RUN case "$(echo "$AUDIO_MUSIC" | tr '[:upper:]' '[:lower:]')" in \
+    on) apt-get update && apt-get install -y --no-install-recommends fluidsynth fluid-soundfont-gm \
+      && apt-get clean && rm -rf /var/lib/apt/lists/* \
+      && pip3 install --break-system-packages mido \
+      && wget -q "https://raw.githubusercontent.com/mrbumpy409/GeneralUser-GS/${GENERALUSER_GS_COMMIT}/GeneralUser-GS.sf2" \
+        -O /usr/share/sounds/sf2/GeneralUser-GS.sf2 ;; \
+    off|"") echo "Audio music tools disabled (AUDIO_MUSIC=off), skipping install" ;; \
+    *) echo "Unknown AUDIO_MUSIC '$AUDIO_MUSIC' (expected on or off)" >&2; exit 1 ;; \
+  esac
+USER node

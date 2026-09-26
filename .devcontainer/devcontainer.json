@@ -7,6 +7,8 @@
       "GIT_DELTA_VERSION": "0.18.2",
       "GODOT_VERSION": "${localEnv:GODOT_VERSION:4.7.2}",
       "HEADROOM": "${localEnv:HEADROOM:off}",
+      "AUDIO": "${localEnv:AUDIO:off}",
+      "AUDIO_MUSIC": "${localEnv:AUDIO_MUSIC:off}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"
     }
   },

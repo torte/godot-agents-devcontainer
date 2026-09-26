@@ -14,6 +14,7 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **[blender-mcp](https://github.com/ahujasid/blender-mcp)** — Drives a Blender session running on your host (22 tools): scene and object inspection, viewport screenshots, arbitrary Python against the scene, and asset sourcing from Poly Haven, Sketchfab, Hyper3D Rodin and Hunyuan3D. Blender stays on the host — only the small Python client is in the container
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
+- **Audio tools** _(optional, off by default)_ — Procedural sound effects (numpy/scipy, pedalboard, pyo, jsfxr) and MIDI music rendering (FluidSynth with two General MIDI soundfonts), see [Optional: audio tools](#optional-audio-tools)
 - **[Headroom](https://github.com/headroomlabs-ai/headroom)** _(optional, off by default)_ — Local compression proxy wrapping Claude Code and OpenCode, reducing token usage without sending anything off-machine (usage beacon disabled)
 
 ## What's NOT included
@@ -390,6 +391,38 @@ The container includes tools that Claude Code can use to generate and manipulate
 | **gltf-transform**   | 3D    | Optimize, compress (Draco/meshopt), merge, convert glTF files                                    |
 | **obj2gltf**         | 3D    | Convert OBJ models to glTF                                                                       |
 | **fbx2gltf**         | 3D    | Convert FBX models to glTF (Node.js API, use via `node -e "require('fbx2gltf')(input, output)"`) |
+
+### Optional: audio tools
+
+For procedural sound effects and music, two independent switches in `.env`
+install extra audio tooling. Both are **off by default** because of the image
+size they add. The agent renders sounds to files in your project. It cannot
+hear them, so it checks its work with spectrogram images and loudness stats,
+and you do the actual listening.
+
+| Switch             | Installs                                                                                                                                                                                                                                                                                        | Size    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `AUDIO=on`         | SFX stack: scipy + soundfile (DSP, WAV I/O), [pedalboard](https://github.com/spotify/pedalboard) (effects: reverb, delay, filters, compression, distortion), pyloudnorm (loudness), librosa (analysis), [pyo](https://github.com/belangeo/pyo) (synthesis, offline render), [jsfxr](https://github.com/chr15m/jsfxr) (retro sfxr presets) | ~900 MB |
+| `AUDIO_MUSIC=on`   | Music: mido (write MIDI), [FluidSynth](https://www.fluidsynth.org/) (render MIDI), soundfonts [FluidR3_GM](https://packages.debian.org/bookworm/fluid-soundfont-gm) and [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS) in `/usr/share/sounds/sf2/`                                  | ~350 MB |
+
+```bash
+AUDIO=on
+AUDIO_MUSIC=on
+```
+
+```bash
+npm run build && npm run up
+```
+
+Check the install with the smoke test, which renders a few sounds with every
+installed tool (and skips the parts that are switched off):
+
+```bash
+bash ~/.devcontainer/audio-smoke.sh
+```
+
+Sound effects are written as 16-bit 44.1 kHz WAV and music as OGG Vorbis, the
+two formats Godot handles best.
 
 ## Godot Headless CLI
 
