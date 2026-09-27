@@ -181,6 +181,26 @@ RUN case "$(echo "$AUDIO_MUSIC" | tr '[:upper:]' '[:lower:]')" in \
     *) echo "Unknown AUDIO_MUSIC '$AUDIO_MUSIC' (expected on or off)" >&2; exit 1 ;; \
   esac
 
+# Optional headless Blender for scripted modelling and export
+# (`blender --background --python x.py`; see README "Optional: headless
+# Blender"). Off by default: the official LTS build adds about 1 GB. Debian's
+# own package is too old for current glTF export. Only the X and GL client
+# libraries it links against are installed; no display is needed.
+ARG BLENDER=off
+ARG BLENDER_VERSION=4.5.14
+RUN case "$(echo "$BLENDER" | tr '[:upper:]' '[:lower:]')" in \
+    on) apt-get update && apt-get install -y --no-install-recommends \
+        xz-utils libx11-6 libxi6 libxxf86vm1 libxfixes3 libxrender1 libxkbcommon0 \
+        libsm6 libice6 libgl1 libegl1 libglu1-mesa \
+      && apt-get clean && rm -rf /var/lib/apt/lists/* \
+      && wget -q "https://download.blender.org/release/Blender${BLENDER_VERSION%.*}/blender-${BLENDER_VERSION}-linux-x64.tar.xz" -O /tmp/blender.tar.xz \
+      && mkdir -p /opt/blender && tar -xJf /tmp/blender.tar.xz -C /opt/blender --strip-components=1 \
+      && rm /tmp/blender.tar.xz \
+      && ln -s /opt/blender/blender /usr/local/bin/blender ;; \
+    off|"") echo "Blender disabled (BLENDER=off), skipping install" ;; \
+    *) echo "Unknown BLENDER '$BLENDER' (expected on or off)" >&2; exit 1 ;; \
+  esac
+
 # Optional in-container rendering, so Godot can draw real frames for
 # screenshots and videos without a host display (see README "Optional:
 # rendering in the container" and `npm run doctor:render`). One switch per

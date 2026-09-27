@@ -47,8 +47,10 @@ LSP-based diagnostics via port 6005, plus DAP console capture via port 6006:
 
 ### blender-mcp (22 tools)
 Drives a Blender session running on the **host** via a socket on port 9876.
-Blender is not in this container — if these tools fail to connect, Blender is
-either not running or its BlenderMCP addon has not been connected (the user must
+The GUI Blender these tools talk to runs on the host, not in this container
+(for the optional in-container `blender`, see "Headless Blender" below). If
+these tools fail to connect, host Blender is either not running or its
+BlenderMCP addon has not been connected (the user must
 press **Connect to MCP server** in the View3D sidebar after each launch).
 
 **Inspection:**
@@ -77,6 +79,17 @@ check first rather than assuming):
 
 For batch or headless mesh work that does not need a live Blender session, the
 container's own `trimesh` / `gltf-transform` tooling is usually the better fit.
+
+### Headless Blender (optional)
+
+`BLENDER=on` (check: `blender --version`) installs Blender in the container
+for scripted work without a GUI:
+`blender --background --python make.py -- <args>` (the script reads its own
+arguments after `--` from `sys.argv`). Export with
+`bpy.ops.export_scene.gltf(filepath=..., export_format="GLB")`, then run
+`gltf-transform validate` on the file. It is the choice when a mesh needs
+bevels, modifiers, UV unwrapping or anything trimesh lacks; otherwise trimesh
+is faster to start. Keep the script next to its output, like audio generators.
 
 ## Auto-reload addon
 

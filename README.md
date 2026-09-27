@@ -15,13 +15,14 @@ Ideal for indie or solo game developers, which simply would like solid tooling w
 - **Godot headless CLI** — Run scenes, export projects, execute GDScript, and validate projects from the command line (`godot --headless`)
 - **In-container rendering** _(optional, off by default)_ — OpenGL via Xvfb and Mesa, so Godot can draw real frames for screenshots and videos without a host display. See [Optional: rendering in the container](#optional-rendering-in-the-container)
 - **Asset generation tools** — ImageMagick, FFmpeg, Python/Pillow, trimesh, gltf-transform, obj2gltf, fbx2gltf
+- **Headless Blender** _(optional, off by default)_ — The official Blender LTS build for scripted modelling and glTF export (`blender --background --python`), see [Optional: headless Blender](#optional-headless-blender)
 - **Audio tools** _(optional, off by default)_ — Procedural sound effects (numpy/scipy, pedalboard, pyo, jsfxr) and MIDI music rendering (FluidSynth with two General MIDI soundfonts), see [Optional: audio tools](#optional-audio-tools)
 - **[Headroom](https://github.com/headroomlabs-ai/headroom)** _(optional, off by default)_ — Local compression proxy wrapping Claude Code and OpenCode, reducing token usage without sending anything off-machine (usage beacon disabled)
 
 ## What's NOT included
 
 - **Godot specific skills** - This is very subjective and each developer may have different preferences when it comes to skills. The setup will source your skills and global Claude setup based on an environment variable (see [2. Configure environment](#2-configure-environment) in the [Setup](#setup) guide). Personal recommendation for a good comprehensive Godot skill: [Godot skill for Claude Code](https://mcp.directory/skills/godot)
-- **Blender itself**: The Blender application is too big for the container, and batch mesh work is covered by the lighter tooling above (trimesh, gltf-transform). The **Blender MCP** is included though — it talks to a Blender you run on the host, so nothing heavy enters the image. See [Set up Blender](#optional-set-up-blender-for-blender-mcp)
+- **Blender with a GUI**: The Blender MCP talks to a Blender you run on the host, so interactive modelling happens there. See [Set up Blender](#optional-set-up-blender-for-blender-mcp). For scripted, windowless work, an optional headless Blender can be built into the image ([Optional: headless Blender](#optional-headless-blender))
 
 ## Prerequisites
 
@@ -431,6 +432,35 @@ bash ~/.devcontainer/audio-smoke.sh
 
 Sound effects are written as 16-bit 44.1 kHz WAV and music as OGG Vorbis, the
 two formats Godot handles best.
+
+## Optional: headless Blender
+
+For modelling and export from scripts, without a GUI or the MCP connect step,
+`BLENDER=on` installs the official Blender LTS build (pinned by
+`BLENDER_VERSION` in the Dockerfile) as `blender`. It is **off by default**
+because it adds about 1 GB.
+
+```bash
+# .env
+BLENDER=on
+```
+
+```bash
+npm run build && npm run up
+```
+
+Check it, then run a script in the background mode:
+
+```bash
+blender --version
+blender --background --python make_mesh.py -- --out /workspace/assets/x.glb
+```
+
+Arguments after `--` reach the script as `sys.argv`. Export with
+`bpy.ops.export_scene.gltf(filepath=..., export_format="GLB")` and check the
+result with `gltf-transform validate`. Blender renders nothing here; for
+pictures of the result, import it into Godot and capture that (see the
+rendering section below).
 
 ## Godot Headless CLI
 
