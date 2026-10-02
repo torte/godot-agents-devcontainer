@@ -226,14 +226,14 @@ installed tool; read it for starting points.
 - Export project: `godot --headless --path /workspace --export-release "preset" output_path`
 - Validate project: `godot --headless --path /workspace --check-only`
 
-**Drawing real frames** needs the optional OpenGL pathway
-(`echo $RENDER_OPENGL $RENDER_DEFAULT` shows `on opengl`). Then run Godot through
-`godot-render`, which wraps Xvfb and sets the display, rendering (OpenGL,
-Compatibility method forced) and audio flags; other arguments pass through:
+**Drawing real frames** needs an optional rendering pathway
+(`echo $RENDER_OPENGL $RENDER_VULKAN $RENDER_DEFAULT`). Then run Godot through
+`godot-render`, which wraps Xvfb and sets the display, rendering and audio
+flags (`opengl`: Compatibility method forced; `vulkan`: the project's
+Forward+ or Mobile method, on lavapipe); other arguments pass through:
 `godot-render --path /workspace ...` (screenshots via
 `get_viewport().get_texture().get_image()`, videos via `--write-movie`). It
-usually renders on the CPU (llvmpipe): correct but slow. Vulkan
-(`RENDER_VULKAN`) is not available yet. `bash ~/.devcontainer/render-doctor/run.sh`
+renders on the CPU (llvmpipe or lavapipe): correct but slow. `bash ~/.devcontainer/render-doctor/run.sh`
 checks the setup.
 
 ## File Editing Guidelines

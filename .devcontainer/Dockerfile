@@ -208,7 +208,8 @@ RUN case "$(echo "$BLENDER" | tr '[:upper:]' '[:lower:]')" in \
 # `godot-render` uses. Declared last so toggling keeps earlier layers cached.
 # - RENDER_OPENGL=on: Xvfb + Mesa GL (llvmpipe, or the host GPU when
 #   RENDER_DEVICE passes /dev/dri in).
-# - RENDER_VULKAN=on: not implemented yet (planned: Mesa lavapipe).
+# - RENDER_VULKAN=on: Xvfb + Mesa Vulkan (lavapipe, a CPU driver), for the
+#   Forward+ and Mobile rendering methods.
 # The values are baked into the image env so they always match what is
 # installed.
 USER root
@@ -216,5 +217,16 @@ ARG RENDER_OPENGL=off
 ARG RENDER_VULKAN=off
 ENV RENDER_OPENGL=${RENDER_OPENGL:-off}
 ENV RENDER_VULKAN=${RENDER_VULKAN:-off}
-RUN case "$(echo "$RENDER_VULKAN" | tr '[:upper:]' '[:lower:]')" in     on) echo "RENDER_VULKAN is not implemented yet (planned: mesa-vulkan-drivers / lavapipe)" >&2; exit 1 ;;     off|"") ;;     *) echo "Unknown RENDER_VULKAN '$RENDER_VULKAN' (expected on or off)" >&2; exit 1 ;;   esac   && case "$(echo "$RENDER_OPENGL" | tr '[:upper:]' '[:lower:]')" in     on) apt-get update && apt-get install -y --no-install-recommends         xvfb         xauth         libgl1-mesa-dri         libgl1         libegl1       && apt-get clean && rm -rf /var/lib/apt/lists/* ;;     off|"") echo "OpenGL rendering disabled (RENDER_OPENGL=off), skipping install" ;;     *) echo "Unknown RENDER_OPENGL '$RENDER_OPENGL' (expected on or off)" >&2; exit 1 ;;   esac
+RUN vk=$(echo "$RENDER_VULKAN" | tr '[:upper:]' '[:lower:]') \
+  && gl=$(echo "$RENDER_OPENGL" | tr '[:upper:]' '[:lower:]') \
+  && case "$vk" in on|off|"") ;; *) echo "Unknown RENDER_VULKAN '$RENDER_VULKAN' (expected on or off)" >&2; exit 1 ;; esac \
+  && case "$gl" in on|off|"") ;; *) echo "Unknown RENDER_OPENGL '$RENDER_OPENGL' (expected on or off)" >&2; exit 1 ;; esac \
+  && pkgs="" \
+  && if [ "$gl" = on ] || [ "$vk" = on ]; then pkgs="xvfb xauth"; fi \
+  && if [ "$gl" = on ]; then pkgs="$pkgs libgl1-mesa-dri libgl1 libegl1"; fi \
+  && if [ "$vk" = on ]; then pkgs="$pkgs mesa-vulkan-drivers libvulkan1"; fi \
+  && if [ -n "$pkgs" ]; then \
+       apt-get update && apt-get install -y --no-install-recommends $pkgs \
+       && apt-get clean && rm -rf /var/lib/apt/lists/*; \
+     else echo "In-container rendering disabled (RENDER_OPENGL=off, RENDER_VULKAN=off), skipping install"; fi
 USER node

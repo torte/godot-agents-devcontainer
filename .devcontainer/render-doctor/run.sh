@@ -20,11 +20,13 @@ else
 fi
 
 start=$(date +%s%N)
-log=$(godot-render --path "$work" --resolution 960x540 -- --out="$frame" 2>&1)
+method=()
+[ "$RENDER_DEFAULT" = vulkan ] && method=(--rendering-method forward_plus)
+log=$(godot-render --path "$work" "${method[@]}" --resolution 960x540 -- --out="$frame" 2>&1)
 rc=$?
 ms=$(( ($(date +%s%N) - start) / 1000000 ))
 
-device=$(grep -m1 'OpenGL API' <<<"$log")
+device=$(grep -m1 -E 'OpenGL API|^Vulkan [0-9]' <<<"$log")
 errors=$(grep -E '^(ERROR|SCRIPT ERROR):' <<<"$log")
 result=$(grep -m1 '^RENDER_DOCTOR' <<<"$log")
 

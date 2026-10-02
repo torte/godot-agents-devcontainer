@@ -21,8 +21,17 @@ case "$pathway" in
     flags=(--rendering-driver opengl3 --rendering-method gl_compatibility)
     ;;
   vulkan)
-    echo "godot-render: Vulkan rendering is not implemented yet. Use RENDER_DEFAULT=opengl." >&2
-    exit 1
+    if [ "$(lower "${RENDER_VULKAN:-}")" != "on" ] || ! command -v xvfb-run >/dev/null; then
+      echo "godot-render: Vulkan rendering is not installed in this image." >&2
+      echo "  Set RENDER_VULKAN=on in .env, then: npm run build && npm run up" >&2
+      exit 1
+    fi
+    # Xvfb cannot present a hardware Vulkan device, so Mesa's CPU driver
+    # (lavapipe) is pinned. The project's own rendering method is kept:
+    # Forward+ and Mobile run on Vulkan, Compatibility needs RENDER_DEFAULT=opengl.
+    lvp=$(ls /usr/share/vulkan/icd.d/lvp_icd.*.json 2>/dev/null | head -1)
+    [ -n "$lvp" ] && export VK_DRIVER_FILES="$lvp" VK_ICD_FILENAMES="$lvp"
+    flags=(--rendering-driver vulkan)
     ;;
   *)
     echo "godot-render: Unknown RENDER_DEFAULT '$pathway' (expected opengl or vulkan)" >&2
