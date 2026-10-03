@@ -137,6 +137,9 @@ The fix is a **long-lived token** that is independent of that rotation. It's opt
 
 Notes:
 
+- **Where it lives.** `npm run up` writes the token to `~/.claude/.oauth-token` in the
+  container (mode 600), not into the container's environment: `devcontainer exec` passes
+  that environment on the `docker exec` command line, where `ps` would show it.
 - **Inference-only.** Long-lived tokens are scoped to inference, which covers normal coding.
 - **Expiry.** The token is long-lived (about a year), not infinite — regenerate with
   `claude setup-token` when it eventually expires.
@@ -484,7 +487,7 @@ pathway. There is one switch per graphics API, both **off by default**:
 | Setting          | When        | What it does                                                                               |
 | ---------------- | ----------- | ------------------------------------------------------------------------------------------ |
 | `RENDER_OPENGL`  | build       | `on` installs Xvfb (a virtual X display) and Mesa's OpenGL drivers                         |
-| `RENDER_VULKAN`  | build       | Reserved for a Vulkan pathway (Mesa lavapipe). Not implemented yet, `on` fails the build   |
+| `RENDER_VULKAN`  | build       | `on` installs Xvfb and Mesa's Vulkan drivers (lavapipe, on the CPU), for Forward+ / Mobile |
 | `RENDER_DEFAULT` | run time    | Which pathway `godot-render` uses: `opengl` (default) or `vulkan`                          |
 | `RENDER_DEVICE`  | run time    | Optional, Linux: pass the host GPU in (see below)                                          |
 
@@ -514,7 +517,11 @@ Run your own scenes with `godot-render`, which wraps `xvfb-run` and `godot` with
 the right display, rendering and audio flags for `RENDER_DEFAULT`; all other
 arguments pass through to Godot. On OpenGL it forces the Compatibility
 rendering method, so Forward+ and Mobile projects render too, with the visual
-differences of that renderer:
+differences of that renderer. On Vulkan it keeps the project's method
+(Forward+ or Mobile; a Compatibility project needs `opengl`) and pins Mesa's
+CPU driver, lavapipe, because Xvfb cannot present a GPU's Vulkan device.
+Forward+ effects (SSAO, SSIL, SDFGI, volumetric fog) render there, several
+times slower than OpenGL:
 
 ```bash
 godot-render --path /workspace \

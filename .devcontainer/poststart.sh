@@ -9,15 +9,14 @@ USER_CONFIG="/home/node/.claude-user-config"
 [ -f "$USER_CONFIG/CLAUDE.md" ] && ln -sf "$USER_CONFIG/CLAUDE.md" /home/node/.claude/CLAUDE.md
 [ -f "$USER_CONFIG/AGENTS.md" ] && ln -sf "$USER_CONFIG/AGENTS.md" /home/node/.claude/AGENTS.md
 
-# --- Claude Code: drop stale credentials when using a long-lived token ---
-# When CLAUDE_CODE_OAUTH_TOKEN is set it authenticates Claude Code directly, but a
-# leftover (usually expired) .credentials.json in the persisted volume makes the
-# interactive TUI show a login screen even though auth actually succeeds. The env
-# token always takes precedence, so the file is safe to remove.
-if [ -n "$CLAUDE_CODE_OAUTH_TOKEN" ] && [ -f /home/node/.claude/.credentials.json ]; then
-  rm -f /home/node/.claude/.credentials.json
-  echo "[devcontainer] Removed stale .credentials.json (using CLAUDE_CODE_OAUTH_TOKEN)"
-fi
+# --- Claude Code: the long-lived token in interactive shells ---
+# `npm run up` writes it to a file (scripts/oauth-token.sh) rather than the
+# container environment; claude-launch.sh reads it, and so does `claude` typed
+# in `npm run shell`.
+TOKEN_LINE='[ -s /home/node/.claude/.oauth-token ] && export CLAUDE_CODE_OAUTH_TOKEN="$(cat /home/node/.claude/.oauth-token)"'
+for rc in /home/node/.zshrc /home/node/.bashrc; do
+  grep -qF "$TOKEN_LINE" "$rc" 2>/dev/null || echo "$TOKEN_LINE" >>"$rc"
+done
 
 # --- Patch: minimal-godot-mcp workspace override guard ---
 # Prevents Godot's workspaceChange LSP notification from replacing
