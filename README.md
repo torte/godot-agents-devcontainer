@@ -623,6 +623,11 @@ so changing it always needs a rebuild. Setting `HEADROOM=off` on an image built
 with it on skips the proxy and the wrap; setting `HEADROOM=on` on an image built
 without it prints a warning and runs the tools plain.
 
+For one prompt, `HEADROOM` in the calling environment wins over `.env`:
+`HEADROOM=off npm run claude:prompt -- "<prompt>"` runs it plain on an image
+built with Headroom, for example when a script needs tool output exactly as
+the tools printed it (compression can drop words and symbols).
+
 > **Upgrading from an earlier version:** Headroom used to be always on. Add
 > `HEADROOM=on` to `.env` before your next rebuild to keep it.
 
