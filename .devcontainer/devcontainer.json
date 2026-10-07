@@ -9,6 +9,7 @@
       "HEADROOM": "${localEnv:HEADROOM:off}",
       "AUDIO": "${localEnv:AUDIO:off}",
       "AUDIO_MUSIC": "${localEnv:AUDIO_MUSIC:off}",
+      "SPEECH": "${localEnv:SPEECH:off}",
       "BLENDER": "${localEnv:BLENDER:off}",
       "RENDER_OPENGL": "${localEnv:RENDER_OPENGL:off}",
       "RENDER_VULKAN": "${localEnv:RENDER_VULKAN:off}",

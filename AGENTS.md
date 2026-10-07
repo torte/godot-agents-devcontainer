@@ -161,8 +161,8 @@ The container includes tools for programmatic asset creation:
 
 ### Audio (optional)
 
-Two build switches add procedural audio tooling; both default to off, so check
-before relying on them:
+Three build switches add procedural audio tooling; all default to off, so
+check before relying on them:
 
 - `AUDIO=on` (check: `python3 -c "import pedalboard"`): numpy/scipy for
   synthesis, `soundfile` for WAV I/O, `pedalboard` for effects (Reverb, Delay,
@@ -177,6 +177,31 @@ before relying on them:
   Two General MIDI fonts: `FluidR3_GM.sf2` and `GeneralUser-GS.sf2` (usually
   the better sounding one). Render the same MIDI with both to let the user
   compare, or render parts with different fonts and mix them in Python.
+- `SPEECH=on` (check: `espeak-ng --version`): text to speech.
+  - Kokoro for natural voices (24 kHz output):
+    ```python
+    import soundfile as sf
+    from kokoro_onnx import Kokoro
+    k = Kokoro("/opt/kokoro/kokoro-v1.0.onnx", "/opt/kokoro/voices-v1.0.bin")
+    samples, sr = k.create("Wave seven incoming!", voice="am_michael", speed=1.0, lang="en-us")
+    sf.write("line.wav", samples, sr)
+    ```
+    `k.get_voices()` lists the 54 voices. The prefix is language and gender:
+    `af_`/`am_` American English (lang `en-us`), `bf_`/`bm_` British
+    (`en-gb`), then `e` Spanish (`es`), `f` French (`fr-fr`), `i` Italian
+    (`it`), `p` Brazilian Portuguese (`pt-br`), `h` Hindi, `j` Japanese,
+    `z` Mandarin. English sounds best; there is no German.
+  - espeak-ng for robotic, retro or alien voices and other languages:
+    `espeak-ng -v en+m3 -s 150 -p 40 -w out.wav "text"` (`-v` voice and
+    variant, see `espeak-ng --voices` and the variants in
+    `espeak-ng-data/voices/!v`; `-s` words per minute; `-p` pitch 0-99; `-m`
+    reads SSML).
+  - Singing (with `AUDIO=on` for librosa): espeak-ng cannot hit exact notes,
+    but SSML `<prosody range="0%">` makes it monotone. Render each syllable
+    that way, measure its pitch with `librosa.pyin`, then
+    `librosa.effects.pitch_shift` to the note and
+    `librosa.effects.time_stretch` to its length, and concatenate. The smoke
+    test below does it; expect a robot choir, not a singer.
 
 `bash ~/.devcontainer/audio-smoke.sh` renders a working example with every
 installed tool; read it for starting points.
@@ -185,6 +210,9 @@ installed tool; read it for starting points.
 - SFX: WAV, 16-bit PCM, 44.1 kHz, mono, peak normalized to -1 dBFS, no
   leading silence (Godot plays it on trigger) and a short fade-out instead of a
   hard cut.
+- Voice lines: the same as SFX. Kokoro renders at 24 kHz and espeak-ng at
+  22.05 kHz, so resample (`ffmpeg -i in.wav -ar 44100 -ac 1 out.wav`) and trim
+  the leading silence.
 - Music: OGG Vorbis (`ffmpeg -i in.wav -c:a libvorbis -q:a 5 out.ogg`), around
   -16 LUFS integrated. For loops, render whole bars and let the reverb tail wrap
   around to the start so the loop point does not click; enable loop in the

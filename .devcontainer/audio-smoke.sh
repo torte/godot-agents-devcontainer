@@ -1,5 +1,6 @@
 #!/bin/bash
-# Smoke test for the optional audio tooling (build args AUDIO / AUDIO_MUSIC).
+# Smoke test for the optional audio tooling (build args AUDIO / AUDIO_MUSIC /
+# SPEECH).
 # Renders a few sounds with every installed tool and checks the results are
 # real, non-silent audio. Parts whose gate is off are reported as SKIP.
 # Usage: bash ~/.devcontainer/audio-smoke.sh [output_dir]
@@ -111,6 +112,53 @@ EOF
   done
 else
   skip "music stack (built with AUDIO_MUSIC=off)"
+fi
+
+# --- SPEECH: espeak-ng + Kokoro ---------------------------------------------
+if command -v espeak-ng >/dev/null; then
+  if espeak-ng -v en+m3 -w "$OUT/espeak.wav" "Wave seven incoming" && check_audio "$OUT/espeak.wav"; then
+    pass "espeak-ng -> WAV"
+  else
+    fail "espeak-ng -> WAV"
+  fi
+
+  if python3 - "$OUT/kokoro.wav" >/dev/null 2>&1 <<'EOF' && check_audio "$OUT/kokoro.wav"
+import sys, soundfile as sf
+from kokoro_onnx import Kokoro
+k = Kokoro("/opt/kokoro/kokoro-v1.0.onnx", "/opt/kokoro/voices-v1.0.bin")
+samples, sr = k.create("Wave seven incoming. Hold the line!", voice="am_michael", speed=1.0, lang="en-us")
+sf.write(sys.argv[1], samples, sr)
+EOF
+  then pass "Kokoro -> WAV"; else fail "Kokoro -> WAV"; fi
+
+  # Singing: espeak-ng has no exact pitch control, but SSML range="0%" makes it
+  # monotone, so each syllable can be measured and shifted onto its note.
+  if python3 -c "import librosa" 2>/dev/null; then
+    if python3 - "$OUT/sing.wav" >/dev/null 2>&1 <<'EOF' && check_audio "$OUT/sing.wav"
+import io, subprocess, sys, numpy as np, librosa, soundfile as sf
+SR, BPM = 22050, 100
+
+def syllable(text, midi, beats, voice="en+f3"):
+    ssml = f'<speak><prosody range="0%">{text}</prosody></speak>'
+    wav = subprocess.run(["espeak-ng", "-m", "-v", voice, "--stdout", ssml], capture_output=True, check=True).stdout
+    y, sr = sf.read(io.BytesIO(wav))
+    y = librosa.resample(y, orig_sr=sr, target_sr=SR)
+    f0, voiced, _ = librosa.pyin(y, fmin=60, fmax=600, sr=SR)
+    y = librosa.effects.pitch_shift(y, sr=SR, n_steps=12 * np.log2(librosa.midi_to_hz(midi) / np.nanmedian(f0[voiced])))
+    return librosa.effects.time_stretch(y, rate=len(y) / (SR * beats * 60 / BPM))
+
+notes = [("twin", 60, 1), ("kle", 60, 1), ("twin", 67, 1), ("kle", 67, 1), ("lit", 69, 1), ("tle", 69, 1), ("star", 67, 2)]
+y = np.concatenate([syllable(*n) for n in notes])
+f0, voiced, _ = librosa.pyin(y[int(SR * 2.4):int(SR * 3.0)], fmin=100, fmax=800, sr=SR)  # "lit", A4
+assert abs(np.nanmedian(f0[voiced]) - 440) < 10
+sf.write(sys.argv[1], y / np.abs(y).max() * 0.9, SR, subtype="PCM_16")
+EOF
+    then pass "espeak-ng + librosa singing -> WAV"; else fail "espeak-ng + librosa singing -> WAV"; fi
+  else
+    skip "espeak-ng singing (needs librosa, built with AUDIO=off)"
+  fi
+else
+  skip "speech stack (built with SPEECH=off)"
 fi
 
 echo "Outputs in $OUT"

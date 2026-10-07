@@ -406,9 +406,9 @@ The container includes tools that Claude Code can use to generate and manipulate
 
 ### Optional: audio tools
 
-For procedural sound effects and music, two independent switches in `.env`
-install extra audio tooling. Both are **off by default** because of the image
-size they add. The agent renders sounds to files in your project. It cannot
+For procedural sound effects, music and speech, three independent switches
+in `.env` install extra audio tooling. All are **off by default** because of
+the image size they add. The agent renders sounds to files in your project. It cannot
 hear them, so it checks its work with spectrogram images and loudness stats,
 and you do the actual listening.
 
@@ -416,10 +416,12 @@ and you do the actual listening.
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
 | `AUDIO=on`         | SFX stack: scipy + soundfile (DSP, WAV I/O), [pedalboard](https://github.com/spotify/pedalboard) (effects: reverb, delay, filters, compression, distortion), pyloudnorm (loudness), librosa (analysis), [pyo](https://github.com/belangeo/pyo) (synthesis, offline render), [jsfxr](https://github.com/chr15m/jsfxr) (retro sfxr presets) | ~900 MB |
 | `AUDIO_MUSIC=on`   | Music: mido (write MIDI), [FluidSynth](https://www.fluidsynth.org/) (render MIDI), soundfonts [FluidR3_GM](https://packages.debian.org/bookworm/fluid-soundfont-gm) and [GeneralUser GS](https://github.com/mrbumpy409/GeneralUser-GS) in `/usr/share/sounds/sf2/`                                  | ~350 MB |
+| `SPEECH=on`        | Speech: [espeak-ng](https://github.com/espeak-ng/espeak-ng) (robotic, many languages, SSML; sings with librosa pitch shifting from `AUDIO=on`) and [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) via [kokoro-onnx](https://github.com/thewh1teagle/kokoro-onnx) (natural voices, Apache-2.0, fast on CPU), model in `/opt/kokoro/` | ~450 MB |
 
 ```bash
 AUDIO=on
 AUDIO_MUSIC=on
+SPEECH=on
 ```
 
 ```bash

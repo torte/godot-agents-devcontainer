@@ -181,6 +181,25 @@ RUN case "$(echo "$AUDIO_MUSIC" | tr '[:upper:]' '[:lower:]')" in \
     *) echo "Unknown AUDIO_MUSIC '$AUDIO_MUSIC' (expected on or off)" >&2; exit 1 ;; \
   esac
 
+# Optional text to speech (see README "Optional: audio tools"), off by default.
+# - SPEECH=on: espeak-ng (small, robotic, many languages, SSML) and Kokoro-82M
+#   (natural neural voices, Apache-2.0, fast on CPU) through kokoro-onnx, with
+#   its model and voices in /opt/kokoro. Both pinned; about 450 MB.
+ARG SPEECH=off
+ARG KOKORO_ONNX_VERSION=0.6.1
+ARG KOKORO_MODEL_RELEASE=model-files-v1.0
+RUN case "$(echo "$SPEECH" | tr '[:upper:]' '[:lower:]')" in \
+    on) apt-get update && apt-get install -y --no-install-recommends espeak-ng \
+      && apt-get clean && rm -rf /var/lib/apt/lists/* \
+      && pip3 install --break-system-packages soundfile "kokoro-onnx==${KOKORO_ONNX_VERSION}" \
+      && mkdir -p /opt/kokoro \
+      && for f in kokoro-v1.0.onnx voices-v1.0.bin; do \
+           wget -q "https://github.com/thewh1teagle/kokoro-onnx/releases/download/${KOKORO_MODEL_RELEASE}/$f" -O "/opt/kokoro/$f" || exit 1; \
+         done ;; \
+    off|"") echo "Speech tools disabled (SPEECH=off), skipping install" ;; \
+    *) echo "Unknown SPEECH '$SPEECH' (expected on or off)" >&2; exit 1 ;; \
+  esac
+
 # Optional headless Blender for scripted modelling and export
 # (`blender --background --python x.py`; see README "Optional: headless
 # Blender"). Off by default: the official LTS build adds about 1 GB. Debian's
