@@ -10,6 +10,7 @@
       "AUDIO": "${localEnv:AUDIO:off}",
       "AUDIO_MUSIC": "${localEnv:AUDIO_MUSIC:off}",
       "SPEECH": "${localEnv:SPEECH:off}",
+      "AUDIO_STEMS": "${localEnv:AUDIO_STEMS:off}",
       "BLENDER": "${localEnv:BLENDER:off}",
       "RENDER_OPENGL": "${localEnv:RENDER_OPENGL:off}",
       "RENDER_VULKAN": "${localEnv:RENDER_VULKAN:off}",

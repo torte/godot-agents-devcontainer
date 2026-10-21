@@ -1,6 +1,6 @@
 #!/bin/bash
 # Smoke test for the optional audio tooling (build args AUDIO / AUDIO_MUSIC /
-# SPEECH).
+# SPEECH / AUDIO_STEMS).
 # Renders a few sounds with every installed tool and checks the results are
 # real, non-silent audio. Parts whose gate is off are reported as SKIP.
 # Usage: bash ~/.devcontainer/audio-smoke.sh [output_dir]
@@ -159,6 +159,22 @@ EOF
   fi
 else
   skip "speech stack (built with SPEECH=off)"
+fi
+
+# --- AUDIO_STEMS: Demucs ----------------------------------------------------
+if command -v demucs >/dev/null; then
+  if ffmpeg -v error -y -f lavfi -i "sine=frequency=55:duration=8" -f lavfi -i "sine=frequency=440:duration=8" \
+      -filter_complex "[0][1]amix=inputs=2" -ar 44100 -ac 2 "$OUT/mix.wav" \
+    && demucs -n htdemucs -d cpu -o "$OUT/stems" "$OUT/mix.wav" >/dev/null 2>&1 \
+    && check_audio "$OUT/stems/htdemucs/mix/bass.wav" \
+    && [ -s "$OUT/stems/htdemucs/mix/drums.wav" ] && [ -s "$OUT/stems/htdemucs/mix/vocals.wav" ] \
+    && [ -s "$OUT/stems/htdemucs/mix/other.wav" ]; then
+    pass "demucs htdemucs -> 4 stems"
+  else
+    fail "demucs htdemucs -> 4 stems"
+  fi
+else
+  skip "stem separation (built with AUDIO_STEMS=off)"
 fi
 
 echo "Outputs in $OUT"

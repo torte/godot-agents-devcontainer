@@ -200,6 +200,27 @@ RUN case "$(echo "$SPEECH" | tr '[:upper:]' '[:lower:]')" in \
     *) echo "Unknown SPEECH '$SPEECH' (expected on or off)" >&2; exit 1 ;; \
   esac
 
+# Optional stem separation (see README "Optional: audio tools"), off by default.
+# - AUDIO_STEMS=on: Demucs (MIT) splits a finished mix into drums, bass, vocals
+#   and other, on CPU-only torch. torch and torchaudio stay at 2.8: from 2.9
+#   torchaudio saves audio only through TorchCodec, which demucs 4.0.1 does not
+#   use. The htdemucs weights are fetched at build time into TORCH_HOME, so
+#   separation works offline. About 900 MB.
+ARG AUDIO_STEMS=off
+ARG TORCH_VERSION=2.8.0
+ARG DEMUCS_VERSION=4.0.1
+ENV TORCH_HOME=/opt/torch
+RUN case "$(echo "$AUDIO_STEMS" | tr '[:upper:]' '[:lower:]')" in \
+    on) pip3 install --no-cache-dir --break-system-packages --index-url https://download.pytorch.org/whl/cpu \
+        "torch==${TORCH_VERSION}" "torchaudio==${TORCH_VERSION}" \
+      && pip3 install --no-cache-dir --break-system-packages soundfile "demucs==${DEMUCS_VERSION}" \
+      && mkdir -p "$TORCH_HOME" \
+      && python3 -c "from demucs.pretrained import get_model; get_model('htdemucs')" \
+      && chown -R node:node "$TORCH_HOME" ;; \
+    off|"") echo "Audio stem separation disabled (AUDIO_STEMS=off), skipping install" ;; \
+    *) echo "Unknown AUDIO_STEMS '$AUDIO_STEMS' (expected on or off)" >&2; exit 1 ;; \
+  esac
+
 # Optional headless Blender for scripted modelling and export
 # (`blender --background --python x.py`; see README "Optional: headless
 # Blender"). Off by default: the official LTS build adds about 1 GB. Debian's

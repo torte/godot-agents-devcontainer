@@ -161,8 +161,8 @@ The container includes tools for programmatic asset creation:
 
 ### Audio (optional)
 
-Three build switches add procedural audio tooling; all default to off, so
-check before relying on them:
+Four build switches add audio tooling; all default to off, so check before
+relying on them:
 
 - `AUDIO=on` (check: `python3 -c "import pedalboard"`): numpy/scipy for
   synthesis, `soundfile` for WAV I/O, `pedalboard` for effects (Reverb, Delay,
@@ -202,6 +202,17 @@ check before relying on them:
     `librosa.effects.pitch_shift` to the note and
     `librosa.effects.time_stretch` to its length, and concatenate. The smoke
     test below does it; expect a robot choir, not a singer.
+- `AUDIO_STEMS=on` (check: `demucs --help`): split a finished mix into stems
+  with Demucs on the CPU:
+  `demucs -n htdemucs -d cpu -o out song.wav` writes
+  `out/htdemucs/song/{drums,bass,vocals,other}.wav` (16-bit, 44.1 kHz,
+  stereo); `--two-stems vocals` gives vocals and the rest, `-j 4` uses more
+  cores. Expect about a minute for a three-minute song. The `htdemucs` weights
+  are in the image (`$TORCH_HOME`); other models (`htdemucs_6s` adds guitar and
+  piano, `htdemucs_ft` is slower and a little cleaner) download on first use.
+  torchaudio prints deprecation warnings while saving; they are harmless. The
+  stems are estimates that bleed into each other: check them with the
+  spectrogram below before relying on one.
 
 `bash ~/.devcontainer/audio-smoke.sh` renders a working example with every
 installed tool; read it for starting points.
