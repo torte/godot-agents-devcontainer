@@ -12,6 +12,7 @@
       "SPEECH": "${localEnv:SPEECH:off}",
       "AUDIO_STEMS": "${localEnv:AUDIO_STEMS:off}",
       "BLENDER": "${localEnv:BLENDER:off}",
+      "EXPORT_TEMPLATES": "${localEnv:EXPORT_TEMPLATES:off}",
       "RENDER_OPENGL": "${localEnv:RENDER_OPENGL:off}",
       "RENDER_VULKAN": "${localEnv:RENDER_VULKAN:off}",
       "ZSH_IN_DOCKER_VERSION": "1.2.0"

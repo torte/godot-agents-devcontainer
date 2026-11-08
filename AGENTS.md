@@ -263,6 +263,8 @@ installed tool; read it for starting points.
 `godot` is available system-wide. Use `--headless` unless you need pixels.
 - Run GDScript: `godot --headless --path /workspace -s res://script.gd`
 - Export project: `godot --headless --path /workspace --export-release "preset" output_path`
+  (needs the export templates, `EXPORT_TEMPLATES=on`; check:
+  `ls ~/.local/share/godot/export_templates`)
 - Validate project: `godot --headless --path /workspace --check-only`
 
 **Drawing real frames** needs an optional rendering pathway

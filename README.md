@@ -469,13 +469,40 @@ result with `gltf-transform validate`. Blender renders nothing here; for
 pictures of the result, import it into Godot and capture that (see the
 rendering section below).
 
+## Optional: export templates
+
+`godot --export-release` needs Godot's export templates for the engine's
+exact version. `EXPORT_TEMPLATES=on` installs the official ones (every
+platform, from the same release as the `godot` binary). It is **off by
+default** because it adds about 1.3 GB.
+
+```bash
+# .env
+EXPORT_TEMPLATES=on
+```
+
+```bash
+npm run build && npm run up
+```
+
+Check it, then export a preset from the project's `export_presets.cfg`:
+
+```bash
+ls ~/.local/share/godot/export_templates
+godot --headless --path /workspace --export-release "Linux" /tmp/build/game.x86_64
+```
+
+The output path's folder must exist. A Linux build runs headless in the
+container (`/tmp/build/game.x86_64 --headless --quit-after 600`); a Windows
+build can be exported but not run.
+
 ## Godot Headless CLI
 
 The container includes the Godot engine binary (v4.7.2 by default), usable via `godot --headless` for:
 
 - **Running scenes**: `godot --headless --path /workspace -s res://script.gd`
 - **Automated testing**: Run test frameworks like GUT or GdUnit4 from the command line
-- **Exporting projects**: `godot --headless --path /workspace --export-release "Linux" build/game`
+- **Exporting projects**: `godot --headless --path /workspace --export-release "Linux" build/game` (needs `EXPORT_TEMPLATES=on`, see above)
 - **Project validation**: `godot --headless --path /workspace --check-only`
 
 The version can be changed by setting `GODOT_VERSION` in your `.env` file before building the container.

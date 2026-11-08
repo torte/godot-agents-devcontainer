@@ -241,6 +241,23 @@ RUN case "$(echo "$BLENDER" | tr '[:upper:]' '[:lower:]')" in \
     *) echo "Unknown BLENDER '$BLENDER' (expected on or off)" >&2; exit 1 ;; \
   esac
 
+# Optional Godot export templates, so `godot --headless --export-release`
+# can build the project in the container (see README "Optional: export
+# templates"). Off by default: the official templates for every platform add
+# about 1.3 GB. They go under /usr/local/share, not ~/.local (a persisted volume
+# that would hide a rebuilt image's files); poststart.sh links them into
+# Godot's templates folder.
+ARG EXPORT_TEMPLATES=off
+RUN case "$(echo "$EXPORT_TEMPLATES" | tr '[:upper:]' '[:lower:]')" in \
+    on) wget -q "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -O /tmp/templates.zip \
+      && mkdir -p /usr/local/share/godot/export_templates \
+      && unzip -q /tmp/templates.zip -d /tmp/templates \
+      && mv /tmp/templates/templates "/usr/local/share/godot/export_templates/${GODOT_VERSION}.stable" \
+      && rm -rf /tmp/templates.zip /tmp/templates ;; \
+    off|"") echo "Export templates disabled (EXPORT_TEMPLATES=off), skipping install" ;; \
+    *) echo "Unknown EXPORT_TEMPLATES '$EXPORT_TEMPLATES' (expected on or off)" >&2; exit 1 ;; \
+  esac
+
 # Optional in-container rendering, so Godot can draw real frames for
 # screenshots and videos without a host display (see README "Optional:
 # rendering in the container" and `npm run doctor:render`). One switch per

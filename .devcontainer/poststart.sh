@@ -9,6 +9,14 @@ USER_CONFIG="/home/node/.claude-user-config"
 [ -f "$USER_CONFIG/CLAUDE.md" ] && ln -sf "$USER_CONFIG/CLAUDE.md" /home/node/.claude/CLAUDE.md
 [ -f "$USER_CONFIG/AGENTS.md" ] && ln -sf "$USER_CONFIG/AGENTS.md" /home/node/.claude/AGENTS.md
 
+# --- Godot: export templates from the image (EXPORT_TEMPLATES=on) ---
+# The image keeps them outside ~/.local (a volume), so link each version in.
+for t in /usr/local/share/godot/export_templates/*/; do
+  [ -d "$t" ] || continue
+  mkdir -p /home/node/.local/share/godot/export_templates
+  ln -sfn "${t%/}" "/home/node/.local/share/godot/export_templates/$(basename "$t")"
+done
+
 # --- Claude Code: the long-lived token in interactive shells ---
 # `npm run up` writes it to a file (scripts/oauth-token.sh) rather than the
 # container environment; claude-launch.sh reads it, and so does `claude` typed
