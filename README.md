@@ -627,6 +627,12 @@ so changing it always needs a rebuild. Setting `HEADROOM=off` on an image built
 with it on skips the proxy and the wrap; setting `HEADROOM=on` on an image built
 without it prints a warning and runs the tools plain.
 
+A one-shot prompt runs in `/workspace`. `CLAUDE_CWD` in the calling
+environment runs it in another directory, relative to `/workspace` or absolute:
+`CLAUDE_CWD=copies/a npm run claude:prompt -- "<prompt>"` works on a second
+checkout inside your project and loads that checkout's `CLAUDE.md`. A
+`--resume` of that session needs the same `CLAUDE_CWD`.
+
 For one prompt, `HEADROOM` in the calling environment wins over `.env`:
 `HEADROOM=off npm run claude:prompt -- "<prompt>"` runs it plain on an image
 built with Headroom, for example when a script needs tool output exactly as
